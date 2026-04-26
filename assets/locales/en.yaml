@@ -6,6 +6,7 @@ game:
 player:
   greeting: "Hello, {name}!"
   score: "Score: {score}"
+  balance: "Balance: {amount::currency}"
   inventory:
     zero: "Empty inventory"
     one: "{count} item"
@@ -15,3 +16,13 @@ menu:
   new_game: "New Game"
   settings: "Settings"
   quit: "Quit"
+  open: "Open"
+
+dialog:
+  open: "Open Dialog Box"
+
+locale:
+  display: "Language: {locale}"
+
+shop:
+  price: "Price: {amount::currency}"

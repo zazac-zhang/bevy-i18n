@@ -6,6 +6,7 @@ game:
 player:
   greeting: "你好，{name}！"
   score: "得分：{score}"
+  balance: "余额：{amount::currency}"
   inventory:
     zero: "背包空空如也"
     one: "{count} 个物品"
@@ -15,3 +16,13 @@ menu:
   new_game: "新游戏"
   settings: "设置"
   quit: "退出"
+  open: "打开"
+
+dialog:
+  open: "打开对话框"
+
+locale:
+  display: "语言：{locale}"
+
+shop:
+  price: "价格：{amount::currency}"

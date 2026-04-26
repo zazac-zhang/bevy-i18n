@@ -23,3 +23,15 @@ divan = "0.1"
 [[bench]]
 name = "i18n_bench"
 harness = false
+
+[[example]]
+name = "basic"
+path = "examples/basic.rs"
+
+[[example]]
+name = "locale_switch"
+path = "examples/locale_switch.rs"
+
+[[example]]
+name = "advanced_features"
+path = "examples/advanced_features.rs"
