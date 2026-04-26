@@ -97,7 +97,9 @@ fn locale_switch_cost() {
     i18n.add_locale("zh", handle);
     i18n.set_locale("en");
 
-    divan::black_box(i18n.set_locale("zh"));
+    divan::black_box(());
+    i18n.set_locale("zh");
+    divan::black_box(());
 }
 
 #[divan::bench]
