@@ -101,10 +101,13 @@ impl I18n {
     /// Look up a translation key with optional variable interpolation.
     /// Returns the translated string, or the key itself if not found.
     pub fn get(&self, key: &str, vars: &[(&str, &str)], locales: &Assets<I18nAsset>) -> String {
-        self.get_plural(key, None, vars, locales)
+        self.get_plural(key, None, None, vars, locales)
     }
 
-    /// Look up a translation key with plural form selection and variable interpolation.
+    /// Look up a translation key with optional context and plural form selection.
+    ///
+    /// If `context` is Some, the lookup key becomes `"{context}::{key}"`.
+    /// This is useful for disambiguating translations (msgctxt).
     ///
     /// If `count` is Some, selects the appropriate plural form:
     /// - `0` → `{key}.zero` (falls back to `{key}.other`)
@@ -115,10 +118,17 @@ impl I18n {
     pub fn get_plural(
         &self,
         key: &str,
+        context: Option<&str>,
         count: Option<u64>,
         vars: &[(&str, &str)],
         locales: &Assets<I18nAsset>,
     ) -> String {
+        // Apply context prefix if present
+        let resolved_key = match context {
+            Some(ctx) => format!("{ctx}::{key}"),
+            None => key.to_string(),
+        };
+
         let Some(handle) = self.locale_map.get(&self.current_locale) else {
             return key.to_string();
         };
@@ -129,20 +139,20 @@ impl I18n {
 
         // Resolve the actual key based on count
         let template_key = match count {
-            None => key.to_string(),
+            None => resolved_key.clone(),
             Some(0) => asset
-                .get(&format!("{key}.zero"))
-                .map(|_| format!("{key}.zero"))
-                .or_else(|| asset.get(&format!("{key}.other")).map(|_| format!("{key}.other")))
-                .unwrap_or_else(|| key.to_string()),
+                .get(&format!("{resolved_key}.zero"))
+                .map(|_| format!("{resolved_key}.zero"))
+                .or_else(|| asset.get(&format!("{resolved_key}.other")).map(|_| format!("{resolved_key}.other")))
+                .unwrap_or_else(|| resolved_key.clone()),
             Some(1) => asset
-                .get(&format!("{key}.one"))
-                .map(|_| format!("{key}.one"))
-                .unwrap_or_else(|| key.to_string()),
+                .get(&format!("{resolved_key}.one"))
+                .map(|_| format!("{resolved_key}.one"))
+                .unwrap_or_else(|| resolved_key.clone()),
             Some(_) => asset
-                .get(&format!("{key}.other"))
-                .map(|_| format!("{key}.other"))
-                .unwrap_or_else(|| key.to_string()),
+                .get(&format!("{resolved_key}.other"))
+                .map(|_| format!("{resolved_key}.other"))
+                .unwrap_or_else(|| resolved_key.clone()),
         };
 
         // Inject count into vars if not already present
@@ -344,10 +354,10 @@ mod tests {
         i18n.add_locale("en", handle);
         i18n.set_locale("en");
 
-        assert_eq!(i18n.get_plural("items", Some(0), &[], &assets), "No items");
-        assert_eq!(i18n.get_plural("items", Some(1), &[], &assets), "1 item");
-        assert_eq!(i18n.get_plural("items", Some(5), &[], &assets), "5 items");
-        assert_eq!(i18n.get_plural("items", Some(0), &[], &assets), "No items");
+        assert_eq!(i18n.get_plural("items", None, Some(0), &[], &assets), "No items");
+        assert_eq!(i18n.get_plural("items", None, Some(1), &[], &assets), "1 item");
+        assert_eq!(i18n.get_plural("items", None, Some(5), &[], &assets), "5 items");
+        assert_eq!(i18n.get_plural("items", None, Some(0), &[], &assets), "No items");
     }
 
     #[test]
@@ -454,6 +464,38 @@ mod tests {
         assert_eq!(
             i18n.get("balance", &[("amount", "1000")], &assets),
             "Balance: $ 1,000"
+        );
+    }
+
+    #[test]
+    fn test_context_translation() {
+        let mut assets = Assets::<I18nAsset>::default();
+
+        let mut entries = std::collections::HashMap::new();
+        // Same word, different contexts
+        entries.insert("menu::open".to_string(), "Open Menu".to_string());
+        entries.insert("dialog::open".to_string(), "Open Dialog Box".to_string());
+        entries.insert("open".to_string(), "Open (default)".to_string());
+        let handle = assets.add(I18nAsset::new(entries));
+
+        let mut i18n = I18n::default();
+        i18n.add_locale("en", handle);
+        i18n.set_locale("en");
+
+        // With context - should find context-specific translation
+        assert_eq!(
+            i18n.get_plural("open", Some("menu"), None, &[], &assets),
+            "Open Menu"
+        );
+        assert_eq!(
+            i18n.get_plural("open", Some("dialog"), None, &[], &assets),
+            "Open Dialog Box"
+        );
+
+        // Without context - should find default translation
+        assert_eq!(
+            i18n.get_plural("open", None, None, &[], &assets),
+            "Open (default)"
         );
     }
 }

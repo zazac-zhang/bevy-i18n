@@ -16,6 +16,8 @@ use bevy::prelude::Component;
 pub struct T {
     /// Translation key (e.g. "game.title")
     pub key: String,
+    /// Optional context for disambiguation (e.g. "menu", "dialog")
+    pub context: Option<String>,
     /// Variable substitutions (key -> value)
     pub vars: Vec<(String, String)>,
     /// Count for plural form selection (None = static)
@@ -29,6 +31,28 @@ impl T {
     pub fn new(key: impl Into<String>) -> Self {
         Self {
             key: key.into(),
+            context: None,
+            vars: Vec::new(),
+            count: None,
+            dirty: true,
+        }
+    }
+
+    /// Create a T component with a context for disambiguation.
+    ///
+    /// The context is prepended to the key as `context::key`.
+    /// This is useful when the same word has different translations
+    /// in different contexts (e.g. "file" as noun vs verb).
+    ///
+    /// # Example
+    /// ```ignore
+    /// T::with_context("open", "menu")     // looks up "menu::open"
+    /// T::with_context("open", "dialog")   // looks up "dialog::open"
+    /// ```
+    pub fn with_context(key: impl Into<String>, context: impl Into<String>) -> Self {
+        Self {
+            key: key.into(),
+            context: Some(context.into()),
             vars: Vec::new(),
             count: None,
             dirty: true,
@@ -44,6 +68,7 @@ impl T {
     pub fn with_vars(key: impl Into<String>, vars: &[(&str, &str)]) -> Self {
         Self {
             key: key.into(),
+            context: None,
             vars: vars
                 .iter()
                 .map(|(k, v)| (k.to_string(), v.to_string()))
@@ -67,6 +92,7 @@ impl T {
     pub fn plural(key: impl Into<String>, count: u64) -> Self {
         Self {
             key: key.into(),
+            context: None,
             vars: Vec::new(),
             count: Some(count),
             dirty: true,

@@ -46,8 +46,8 @@
 ## Phase 2: 高级功能
 
 ### 8. 日期/数字/货币格式化
-- [ ] 翻译值支持 `{count::number}` 等格式化标记
-- [ ] locale 规则配置 (小数位数、千位分隔符等)
+- [x] 翻译值支持 `{count::number}` 等格式化标记
+- [x] locale 规则配置 (小数位数、千位分隔符等)
 
 ### 9. 上下文翻译 (msgctxt)
 - [ ] YAML 中支持 `key: { context: "menu", text: "翻译" }` 结构
