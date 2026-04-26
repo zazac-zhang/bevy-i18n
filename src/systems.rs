@@ -1,6 +1,7 @@
 use bevy::asset::{AssetEvent, Assets};
 use bevy::ecs::message::MessageReader;
 use bevy::prelude::*;
+use bevy::text::TextFont;
 use bevy::ui::prelude::Text;
 
 use crate::asset::I18nAsset;
@@ -27,7 +28,15 @@ pub fn update_text_system(
     i18n: Res<I18n>,
     locales: Res<Assets<I18nAsset>>,
     mut query: Query<(&mut T, &mut Text)>,
+    mut text_fonts: Query<&mut TextFont, With<T>>,
 ) {
+    // Update fonts for all T components if locale font is set
+    if let Some(font_handle) = i18n.current_locale_font() {
+        for mut text_font in &mut text_fonts {
+            text_font.font = font_handle.clone();
+        }
+    }
+
     for (mut t, mut text) in &mut query {
         if !t.dirty {
             continue;

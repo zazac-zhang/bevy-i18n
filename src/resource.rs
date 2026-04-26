@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 
 use bevy::asset::{Assets, Handle};
-use bevy::prelude::Resource;
+use bevy::prelude::{Font, Resource};
 
 use crate::asset::I18nAsset;
 use crate::interpolate::interpolate;
@@ -39,12 +39,19 @@ pub struct I18n {
     missing_key_count: AtomicU64,
     /// Cache of (key, vars_hash) -> translated string. Cleared on locale change.
     translation_cache: Mutex<HashMap<(String, u64), String>>,
+    /// Per-locale font handles. Used for automatic font fallback.
+    locale_fonts: HashMap<String, Handle<Font>>,
 }
 
 impl I18n {
     /// Register a locale with its asset handle.
     pub fn add_locale(&mut self, locale: &str, handle: Handle<I18nAsset>) {
         self.locale_map.insert(locale.to_string(), handle);
+    }
+
+    /// Clear the translation cache (used during hot reload).
+    pub fn clear_translation_cache(&mut self) {
+        self.translation_cache.lock().unwrap().clear();
     }
 
     /// Set the current locale.
@@ -72,6 +79,16 @@ impl I18n {
         let was_changed = self.locale_changed;
         self.locale_changed = false;
         was_changed
+    }
+
+    /// Set the font handle for a specific locale.
+    pub fn set_locale_font(&mut self, locale: &str, handle: Handle<Font>) {
+        self.locale_fonts.insert(locale.to_string(), handle);
+    }
+
+    /// Get the font handle for the current locale, if set.
+    pub fn current_locale_font(&self) -> Option<&Handle<Font>> {
+        self.locale_fonts.get(&self.current_locale)
     }
 
     /// Look up a translation key with optional variable interpolation.

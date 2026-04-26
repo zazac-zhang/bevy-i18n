@@ -31,9 +31,9 @@
 - [x] 测试：缓存命中/未命中性能对比
 
 ### 6. 热重载刷新
-- [ ] 注册 `AssetEvent<I18nAsset>` 监听
-- [ ] 资产重新加载后更新 `I18n::parsed_cache`
-- [ ] 标记所有 `T` 组件为 dirty
+- [x] 注册 `AssetEvent<I18nAsset>` 监听
+- [x] 资产重新加载后更新 `I18n::parsed_cache`
+- [x] 标记所有 `T` 组件为 dirty
 - [ ] 测试：修改 YAML 文件后 UI 自动刷新
 
 ### 7. 字体回退 (per-locale font)
