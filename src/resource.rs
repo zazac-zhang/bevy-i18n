@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
@@ -43,6 +44,8 @@ pub struct I18n {
     locale_fonts: HashMap<String, Handle<Font>>,
     /// Per-locale number formatting rules. Used for {key::number}/{key::currency}.
     number_formats: HashMap<String, NumberFormat>,
+    /// Set of missing keys encountered during lookup. Used for export.
+    missing_keys: Mutex<HashSet<String>>,
 }
 
 impl I18n {
@@ -244,12 +247,35 @@ impl I18n {
     /// Warn about a missing key and increment the counter.
     fn warn_missing_key(&self, key: &str, locale: &str) {
         self.missing_key_count.fetch_add(1, Ordering::Relaxed);
+        self.missing_keys.lock().unwrap().insert(key.to_string());
         if self.missing_key_config.warn_on_missing {
             eprintln!("[i18n] Missing key '{key}' in locale '{locale}'");
         }
     }
 
-    /// Reset the missing key counter.
+    /// Get a sorted list of all missing keys encountered so far.
+    pub fn missing_keys(&self) -> Vec<String> {
+        let mut keys: Vec<String> = self.missing_keys.lock().unwrap().iter().cloned().collect();
+        keys.sort();
+        keys
+    }
+
+    /// Export missing keys to a YAML file for developers to fill in.
+    /// Returns the number of keys written.
+    pub fn write_missing_keys(&self, path: &str) -> Result<usize, Box<dyn std::error::Error>> {
+        let keys = self.missing_keys();
+        if keys.is_empty() {
+            return Ok(0);
+        }
+        let mut yaml = String::from("# Missing translation keys\n# Fill in the values and rename this file to your locale.\n");
+        for key in &keys {
+            yaml.push_str(&format!("{key}: \"\"\n"));
+        }
+        std::fs::write(path, yaml)?;
+        Ok(keys.len())
+    }
+
+    /// Reset the missing key counter and clear the missing keys set.
     pub fn reset_missing_key_count(&self) -> u64 {
         self.missing_key_count.swap(0, Ordering::Relaxed)
     }
@@ -497,5 +523,36 @@ mod tests {
             i18n.get_plural("open", None, None, &[], &assets),
             "Open (default)"
         );
+    }
+
+    #[test]
+    fn test_missing_keys_export() {
+        let (assets, handle) = setup_i18n();
+
+        let mut i18n = I18n::default();
+        i18n.add_locale("en", handle);
+        i18n.set_locale("en");
+
+        // Lookup some missing keys
+        let _ = i18n.get("missing.key1", &[], &assets);
+        let _ = i18n.get("missing.key2", &[], &assets);
+        let _ = i18n.get("missing.key1", &[], &assets); // duplicate, should not repeat
+
+        let keys = i18n.missing_keys();
+        assert_eq!(keys.len(), 2);
+        assert_eq!(keys[0], "missing.key1");
+        assert_eq!(keys[1], "missing.key2");
+
+        // Write to temp file
+        let path = "/tmp/test_missing_keys.yaml";
+        let count = i18n.write_missing_keys(path).unwrap();
+        assert_eq!(count, 2);
+
+        let content = std::fs::read_to_string(path).unwrap();
+        assert!(content.contains("missing.key1:"));
+        assert!(content.contains("missing.key2:"));
+
+        // Cleanup
+        std::fs::remove_file(path).ok();
     }
 }
