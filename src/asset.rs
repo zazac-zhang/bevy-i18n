@@ -13,6 +13,11 @@ pub struct I18nAsset {
 }
 
 impl I18nAsset {
+    /// Create a new I18nAsset from a key-value map.
+    pub(crate) fn new(entries: HashMap<String, String>) -> Self {
+        Self { entries }
+    }
+
     /// Look up a translation by key.
     pub fn get(&self, key: &str) -> Option<&str> {
         self.entries.get(key).map(|s| s.as_str())
