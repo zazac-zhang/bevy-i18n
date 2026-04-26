@@ -6,9 +6,9 @@ description = "A lightweight i18n plugin for Bevy 0.18"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-bevy = { version = "0.18", default-features = false, features = ["std"] }
+bevy = { version = "0.18", default-features = false, features = ["std", "bevy_asset"] }
 serde = { version = "1", features = ["derive"] }
-serde_yaml = { version = "0.10", optional = true }
+serde_yaml = { version = "0.9", optional = true }
 
 [features]
 default = ["yaml"]
@@ -16,4 +16,4 @@ yaml = ["dep:serde_yaml"]
 po = []
 
 [dev-dependencies]
-bevy = { version = "0.18", default-features = false, features = ["std"] }
+bevy = { version = "0.18", default-features = false, features = ["std", "bevy_asset"] }
