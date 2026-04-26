@@ -60,6 +60,8 @@
 ### 11. CLI 提取工具
 - [x] `cargo i18n-extract` 扫描代码中的 `T::new()` 调用
 - [x] 自动生成 `locales/template.yaml`
+- [x] 提取变量名并在 YAML 中注释标注
+- [x] 单元测试覆盖所有正则模式
 
 ---
 
@@ -69,6 +71,9 @@
 - [x] 验证所有 key 在所有 locale 中存在
 - [x] 检测 key 缺失/多余
 - [x] 检测变量不一致 (en 有 `{name}` 但 zh 没有)
+- [x] `--template` 模式对比参考模板
+- [x] 性能优化：消除 N+1 文件重复读取
+- [x] 单元测试
 
 ### 13. 文档和示例
 - [x] README.md 使用文档
@@ -78,3 +83,7 @@
 ### 14. 基准测试
 - [x] 翻译查找性能基准
 - [x] 大量语言切换时的帧时间
+- [x] 系统级基准：dirty-flag resolution、plural pipeline
+- [x] 缓存压力测试：cache_hit_rate、cache_pressure
+- [x] TVar change detection 基准
+- [x] 不同规模的 args 基准 (10/100/500 entities)
