@@ -11,6 +11,9 @@ use crate::asset::I18nAsset;
 use crate::interpolate::{interpolate_with_format, NumberFormat};
 
 /// Configuration for missing key warnings.
+///
+/// Controls whether missing translation keys produce console warnings.
+/// By default, warnings are enabled in debug builds and disabled in release.
 #[derive(Clone, Debug)]
 pub struct MissingKeyConfig {
     /// Whether to warn on missing keys (default: true in debug, false in release).
@@ -29,6 +32,25 @@ impl Default for MissingKeyConfig {
 }
 
 /// Central i18n resource — manages current locale and registered locale handles.
+///
+/// This is the primary entry point for translation lookups. Register locale handles
+/// with [`add_locale`](I18n::add_locale), set the active locale with [`set_locale`](I18n::set_locale),
+/// and look up translations with [`get`](I18n::get) or [`get_plural`](I18n::get_plural).
+///
+/// # Example
+/// ```ignore
+/// // Register locales
+/// i18n.add_locale("en", english_handle);
+/// i18n.add_locale("zh", chinese_handle);
+/// i18n.set_fallback_locale("en");
+///
+/// // Switch language
+/// i18n.set_locale("zh");
+///
+/// // Look up translations
+/// let greeting = i18n.get("greeting", &[("name", "World")], &assets);
+/// let items = i18n.get_plural("items", None, Some(5), &[], &assets);
+/// ```
 #[derive(Resource, Default)]
 pub struct I18n {
     current_locale: String,

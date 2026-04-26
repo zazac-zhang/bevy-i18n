@@ -1,6 +1,29 @@
 use std::borrow::Cow;
 
 /// Number formatting configuration.
+///
+/// Defines locale-specific rules for formatting numbers and currency
+/// in translation templates via `{key::number}` and `{key::currency}` syntax.
+///
+/// # Example
+/// ```
+/// # use bevy_i18n::NumberFormat;
+/// let us = NumberFormat {
+///     thousands_sep: ',',
+///     decimal_sep: '.',
+///     decimal_places: Some(2),
+///     currency_symbol: Some("$".to_string()),
+/// };
+/// assert_eq!(us.format_currency("1234.5"), "$ 1,234.50");
+///
+/// let eu = NumberFormat {
+///     thousands_sep: '.',
+///     decimal_sep: ',',
+///     decimal_places: Some(2),
+///     currency_symbol: Some("€".to_string()),
+/// };
+/// assert_eq!(eu.format_currency("1234.5"), "€ 1.234,50");
+/// ```
 #[derive(Clone, Debug)]
 pub struct NumberFormat {
     /// Thousands separator (e.g. "," for en-US, "." for de-DE).
@@ -131,6 +154,8 @@ impl FormatType {
 
 /// Replace `{key}` placeholders in `template` with values from `vars`.
 /// Unknown keys are left as-is (e.g. `{name}` stays `{name}`).
+///
+/// This is a convenience wrapper around [`interpolate_with_format`] with no formatting.
 #[allow(dead_code)]
 pub fn interpolate<'a>(template: &'a str, vars: &'a [(&'a str, &'a str)]) -> Cow<'a, str> {
     interpolate_with_format(template, vars, None)
@@ -138,6 +163,28 @@ pub fn interpolate<'a>(template: &'a str, vars: &'a [(&'a str, &'a str)]) -> Cow
 
 /// Replace `{key}` and `{key::format}` placeholders with formatting support.
 /// When `num_format` is None, format specifiers are treated as plain keys.
+///
+/// Supported format types:
+/// - `{key::number}` — format with thousands/decimal separators
+/// - `{key::currency}` — format with currency symbol and separators
+///
+/// # Example
+/// ```
+/// # use bevy_i18n::NumberFormat;
+/// # use bevy_i18n::interpolate::interpolate_with_format;
+/// let fmt = NumberFormat {
+///     thousands_sep: ',',
+///     decimal_sep: '.',
+///     decimal_places: None,
+///     currency_symbol: Some("$".to_string()),
+/// };
+/// let result = interpolate_with_format(
+///     "Total: {amount::currency}, Count: {n::number}",
+///     &[("amount", "9999.99"), ("n", "12345")],
+///     Some(&fmt),
+/// );
+/// assert_eq!(result, "Total: $ 9,999.99, Count: 12,345");
+/// ```
 pub fn interpolate_with_format<'a>(
     template: &'a str,
     vars: &'a [(&'a str, &'a str)],

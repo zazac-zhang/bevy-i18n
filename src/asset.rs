@@ -5,6 +5,16 @@ use bevy::prelude::{Asset, TypePath};
 use serde::{Deserialize, Serialize};
 
 /// A single locale's translation data, loaded as a Bevy Asset.
+///
+/// Translation data is stored as a flat key-value map. Keys use dot-notation
+/// (e.g. `"game.title"`, `"player.inventory"`). Nested YAML structures are
+/// automatically flattened during loading.
+///
+/// # Plural forms
+/// Plural translations use suffixed keys: `items.zero`, `items.one`, `items.other`.
+///
+/// # Context disambiguation
+/// Context-prefixed keys use `context::key` notation (e.g. `menu::open`, `dialog::open`).
 #[derive(Debug, Asset, TypePath, Clone)]
 pub struct I18nAsset {
     /// Flat key -> translation string map.
@@ -28,8 +38,13 @@ impl I18nAsset {
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct I18nLoaderSettings;
 
-/// AssetLoader that parses translation files into I18nAsset.
-/// Supports YAML (default) and .po (feature: po).
+/// AssetLoader that parses translation files into [`I18nAsset`].
+///
+/// Supports the following file formats (based on enabled features):
+/// - `.yaml` / `.yml` — YAML format (default feature, uses `serde_yaml`)
+/// - `.po` — GNU gettext format (requires `po` feature)
+///
+/// The loader is registered automatically when using [`I18nPlugin`](crate::plugin::I18nPlugin).
 #[derive(Default, bevy::prelude::TypePath)]
 pub struct I18nLoader;
 
