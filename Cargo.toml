@@ -1,0 +1,19 @@
+[package]
+name = "bevy_i18n"
+version = "0.1.0"
+edition = "2024"
+description = "A lightweight i18n plugin for Bevy 0.18"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+bevy = { version = "0.18", default-features = false, features = ["std"] }
+serde = { version = "1", features = ["derive"] }
+serde_yaml = { version = "0.10", optional = true }
+
+[features]
+default = ["yaml"]
+yaml = ["dep:serde_yaml"]
+po = ["dep:triumph-i18n"]
+
+[dev-dependencies]
+bevy = { version = "0.18", default-features = false, features = ["std"] }
