@@ -9,6 +9,7 @@ pub fn interpolate<'a>(template: &'a str, vars: &'a [(&'a str, &'a str)]) -> Cow
 
     let mut result = String::with_capacity(template.len());
     let mut chars = template.chars().peekable();
+    let mut changed = false;
 
     while let Some(ch) = chars.next() {
         if ch == '{' {
@@ -25,6 +26,7 @@ pub fn interpolate<'a>(template: &'a str, vars: &'a [(&'a str, &'a str)]) -> Cow
             if found_close {
                 if let Some((_, val)) = vars.iter().find(|(k, _)| *k == key) {
                     result.push_str(val);
+                    changed = true;
                 } else {
                     result.push('{');
                     result.push_str(&key);
@@ -39,7 +41,11 @@ pub fn interpolate<'a>(template: &'a str, vars: &'a [(&'a str, &'a str)]) -> Cow
         }
     }
 
-    Cow::Owned(result)
+    if changed {
+        Cow::Owned(result)
+    } else {
+        Cow::Borrowed(template)
+    }
 }
 
 #[cfg(test)]

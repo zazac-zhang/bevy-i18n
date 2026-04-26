@@ -66,26 +66,6 @@ impl AssetLoader for I18nLoader {
             _ => {}
         }
 
-        // Single-feature fallbacks
-        #[cfg(all(feature = "yaml", not(feature = "po")))]
-        {
-            let yaml_value: serde_yaml::Value =
-                serde_yaml::from_str(&content).map_err(|e| format!("YAML parse error: {e}"))?;
-            let entries = flatten_yaml_value(&yaml_value);
-            Ok(I18nAsset { entries })
-        }
-
-        #[cfg(all(feature = "po", not(feature = "yaml")))]
-        {
-            let entries = parse_po(&content);
-            Ok(I18nAsset { entries })
-        }
-
-        // Both features enabled but unknown extension, or no features
-        #[cfg(any(
-            all(feature = "yaml", feature = "po"),
-            not(any(feature = "yaml", feature = "po"))
-        ))]
         Err(format!("Unsupported extension: '{extension}'").into())
     }
 
