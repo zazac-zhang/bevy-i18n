@@ -23,7 +23,7 @@
 ### 4. 缺失 key 告警
 - [x] 开发模式 (`#[cfg(debug_assertions)]`) 下，缺失的 key 输出 `warn!`
 - [x] 统计缺失 key 的计数
-- [ ] 可选：写入 `.missing_keys.yaml` 文件
+- [x] 可选：写入 `.missing_keys.yaml` 文件
 
 ### 5. 翻译缓存
 - [x] `I18n` 添加 `(key, vars_hash) -> String` 缓存
