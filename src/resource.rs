@@ -1,5 +1,7 @@
 use std::collections::HashMap;
+use std::hash::{DefaultHasher, Hash, Hasher};
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Mutex;
 
 use bevy::asset::{Assets, Handle};
 use bevy::prelude::Resource;
@@ -35,6 +37,8 @@ pub struct I18n {
     missing_key_config: MissingKeyConfig,
     /// Count of missing key lookups since last reset.
     missing_key_count: AtomicU64,
+    /// Cache of (key, vars_hash) -> translated string. Cleared on locale change.
+    translation_cache: Mutex<HashMap<(String, u64), String>>,
 }
 
 impl I18n {
@@ -47,6 +51,7 @@ impl I18n {
     pub fn set_locale(&mut self, locale: &str) {
         if self.current_locale != locale {
             self.current_locale = locale.to_string();
+            self.translation_cache.lock().unwrap().clear();
             self.locale_changed = true;
         }
     }
@@ -137,12 +142,28 @@ impl I18n {
             .map(|(k, v)| (k.as_str(), v.as_str()))
             .collect();
 
+        // Check cache
+        let cache_key = hash_cache_key(&template_key, &resolved_vars);
+        {
+            let cache = self.translation_cache.lock().unwrap();
+            if let Some(cached) = cache.get(&cache_key) {
+                return cached.clone();
+            }
+        }
+
         match asset.get(&template_key) {
-            Some(template) => interpolate(template, &resolved_refs).into_owned(),
+            Some(template) => {
+                let resolved = interpolate(template, &resolved_refs).into_owned();
+                self.translation_cache.lock().unwrap().insert(cache_key, resolved.clone());
+                resolved
+            }
             None => {
                 let locale = self.current_locale.clone();
                 match self.try_fallback(&template_key, &resolved_refs, locales) {
-                    Some(result) => result,
+                    Some(result) => {
+                        self.translation_cache.lock().unwrap().insert(cache_key.clone(), result.clone());
+                        result
+                    }
                     None => {
                         // Both current locale and fallback failed
                         self.warn_missing_key(key, &locale);
@@ -196,6 +217,16 @@ impl I18n {
     pub fn reset_missing_key_count(&self) -> u64 {
         self.missing_key_count.swap(0, Ordering::Relaxed)
     }
+}
+
+/// Hash a (template_key, vars) pair for cache lookup.
+fn hash_cache_key(key: &str, vars: &[(String, String)]) -> (String, u64) {
+    let mut hasher = DefaultHasher::new();
+    for (k, v) in vars {
+        k.hash(&mut hasher);
+        v.hash(&mut hasher);
+    }
+    (key.to_string(), hasher.finish())
 }
 
 #[cfg(test)]
@@ -319,5 +350,43 @@ mod tests {
 
         // Key missing in zh_CN - should fallback to en_US
         assert_eq!(i18n.get("farewell", &[], &assets), "Goodbye!");
+    }
+
+    #[test]
+    fn test_cache_returns_same_value() {
+        let (assets, handle) = setup_i18n();
+
+        let mut i18n = I18n::default();
+        i18n.add_locale("en", handle);
+        i18n.set_locale("en");
+
+        // First lookup
+        let text1 = i18n.get("greeting", &[], &assets);
+        assert_eq!(text1, "Hello!");
+
+        // Cache should return same value on second lookup
+        let text2 = i18n.get("greeting", &[], &assets);
+        assert_eq!(text2, "Hello!");
+
+        // Verify cache is populated (non-empty)
+        assert!(!i18n.translation_cache.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_cache_cleared_on_locale_change() {
+        let (assets, handle) = setup_i18n();
+
+        let mut i18n = I18n::default();
+        i18n.add_locale("en", handle.clone());
+        i18n.add_locale("zh", handle);
+        i18n.set_locale("en");
+
+        // Lookup to populate cache
+        let _ = i18n.get("greeting", &[], &assets);
+        assert!(!i18n.translation_cache.lock().unwrap().is_empty());
+
+        // Switch locale — cache should be cleared
+        i18n.set_locale("zh");
+        assert!(i18n.translation_cache.lock().unwrap().is_empty());
     }
 }
