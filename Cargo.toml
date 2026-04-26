@@ -13,7 +13,7 @@ serde_yaml = { version = "0.10", optional = true }
 [features]
 default = ["yaml"]
 yaml = ["dep:serde_yaml"]
-po = ["dep:triumph-i18n"]
+po = []
 
 [dev-dependencies]
 bevy = { version = "0.18", default-features = false, features = ["std"] }
