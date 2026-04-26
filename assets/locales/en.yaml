@@ -1,0 +1,16 @@
+# assets/locales/en.yaml
+game:
+  title: "Star Trek"
+  subtitle: "Explore the Unknown"
+
+player:
+  greeting: "Hello, {name}!"
+  inventory:
+    zero: "Empty inventory"
+    one: "{count} item"
+    other: "{count} items"
+
+menu:
+  new_game: "New Game"
+  settings: "Settings"
+  quit: "Quit"

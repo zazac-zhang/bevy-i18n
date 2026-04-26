@@ -1,0 +1,16 @@
+# assets/locales/zh.yaml
+game:
+  title: "星际迷航"
+  subtitle: "探索未知"
+
+player:
+  greeting: "你好，{name}！"
+  inventory:
+    zero: "背包空空如也"
+    one: "{count} 个物品"
+    other: "{count} 个物品"
+
+menu:
+  new_game: "新游戏"
+  settings: "设置"
+  quit: "退出"
