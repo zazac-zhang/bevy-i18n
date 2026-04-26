@@ -15,9 +15,9 @@
 - [x] 测试：en 缺少 key 时 fallback 到 zh
 
 ### 3. 动态变量更新
-- [ ] 新增 `TVar` 组件，用于标记动态变量实体
-- [ ] `T` 组件支持按变量 key 引用 `TVar` 实体
-- [ ] 系统：`TVar` 变化时标记关联的 `T` 为 dirty
+- [x] 新增 `TVar` 组件，用于标记动态变量实体
+- [x] `T` 组件支持按变量 key 引用 `TVar` 实体
+- [x] 系统：`TVar` 变化时标记关联的 `T` 为 dirty
 - [ ] 或者更简单方案：`T` 组件支持 `T::with_resource(key, Res)` 在每帧求值
 
 ### 4. 缺失 key 告警
