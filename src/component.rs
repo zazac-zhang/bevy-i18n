@@ -1,4 +1,4 @@
-use bevy::prelude::Component;
+use bevy::prelude::{Component, Entity};
 
 /// Component that marks a Text entity for automatic translation.
 ///
@@ -20,6 +20,8 @@ pub struct T {
     pub context: Option<String>,
     /// Variable substitutions (key -> value)
     pub vars: Vec<(String, String)>,
+    /// Dynamic variable references: (var_name, Entity with TVar)
+    pub dynamic_vars: Vec<(String, Entity)>,
     /// Count for plural form selection (None = static)
     pub count: Option<u64>,
     /// Whether the text needs to be re-resolved
@@ -33,6 +35,7 @@ impl T {
             key: key.into(),
             context: None,
             vars: Vec::new(),
+            dynamic_vars: Vec::new(),
             count: None,
             dirty: true,
         }
@@ -54,6 +57,7 @@ impl T {
             key: key.into(),
             context: Some(context.into()),
             vars: Vec::new(),
+            dynamic_vars: Vec::new(),
             count: None,
             dirty: true,
         }
@@ -73,6 +77,7 @@ impl T {
                 .iter()
                 .map(|(k, v)| (k.to_string(), v.to_string()))
                 .collect(),
+            dynamic_vars: Vec::new(),
             count: None,
             dirty: true,
         }
@@ -94,9 +99,32 @@ impl T {
             key: key.into(),
             context: None,
             vars: Vec::new(),
+            dynamic_vars: Vec::new(),
             count: Some(count),
             dirty: true,
         }
+    }
+
+    /// Create a T component with a dynamic variable reference.
+    ///
+    /// The `tvar_entity` should have a `TVar` component. The variable value
+    /// is read fresh each frame from that entity.
+    ///
+    /// # Example
+    /// ```ignore
+    /// // Spawn a dynamic variable
+    /// let score_entity = commands.spawn(TVar::new("0")).id();
+    ///
+    /// // Reference it in a T component
+    /// commands.spawn((
+    ///     Text::new(""),
+    ///     T::new("player.score")
+    ///         .with_dynamic_var("score", score_entity),
+    /// ));
+    /// ```
+    pub fn with_dynamic_var(mut self, var_name: impl Into<String>, tvar_entity: Entity) -> Self {
+        self.dynamic_vars.push((var_name.into(), tvar_entity));
+        self
     }
 
     /// Mark this component as needing re-resolution.
@@ -117,6 +145,33 @@ impl T {
     pub fn ns(namespace: impl Into<String>) -> NamespaceBuilder {
         NamespaceBuilder {
             namespace: namespace.into(),
+        }
+    }
+}
+
+/// Component that stores a dynamic variable value.
+///
+/// Spawn this on an entity and reference it from `T::with_dynamic_var`.
+/// When the TVar value changes, associated T components will update automatically.
+///
+/// # Example
+/// ```ignore
+/// let score = commands.spawn(TVar::new("0")).id();
+///
+/// // Later, update the score
+/// commands.entity(score).insert(TVar::new("100"));
+/// ```
+#[derive(Component, Clone, Debug, Default)]
+pub struct TVar {
+    /// The current value of this variable.
+    pub value: String,
+}
+
+impl TVar {
+    /// Create a TVar with the given value.
+    pub fn new(value: impl Into<String>) -> Self {
+        Self {
+            value: value.into(),
         }
     }
 }
@@ -206,5 +261,20 @@ mod tests {
         let t = T::ns("inventory").plural("items", 5);
         assert_eq!(t.key, "inventory.items");
         assert_eq!(t.count, Some(5));
+    }
+
+    #[test]
+    fn test_tvar_new() {
+        let tvar = TVar::new("42");
+        assert_eq!(tvar.value, "42");
+    }
+
+    #[test]
+    fn test_t_with_dynamic_var() {
+        let tvar_entity = Entity::from_raw_u32(0).unwrap();
+        let t = T::new("player.score").with_dynamic_var("score", tvar_entity);
+        assert_eq!(t.key, "player.score");
+        assert_eq!(t.dynamic_vars.len(), 1);
+        assert_eq!(t.dynamic_vars[0], ("score".to_string(), tvar_entity));
     }
 }

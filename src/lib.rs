@@ -8,7 +8,7 @@ mod systems;
 /// Prelude — one-import convenience
 pub mod prelude {
     pub use crate::asset::I18nAsset;
-    pub use crate::component::T;
+    pub use crate::component::{T, TVar};
     pub use crate::interpolate::NumberFormat;
     pub use crate::plugin::I18nPlugin;
     pub use crate::resource::I18n;
