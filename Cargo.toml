@@ -18,3 +18,8 @@ po = []
 
 [dev-dependencies]
 bevy = { version = "0.18", default-features = false, features = ["std", "bevy_asset", "bevy_text", "bevy_ui"] }
+divan = "0.1"
+
+[[bench]]
+name = "i18n_bench"
+harness = false

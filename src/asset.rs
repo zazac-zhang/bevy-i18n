@@ -14,7 +14,7 @@ pub struct I18nAsset {
 
 impl I18nAsset {
     /// Create a new I18nAsset from a key-value map.
-    pub(crate) fn new(entries: HashMap<String, String>) -> Self {
+    pub fn new(entries: HashMap<String, String>) -> Self {
         Self { entries }
     }
 

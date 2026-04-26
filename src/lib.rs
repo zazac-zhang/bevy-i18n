@@ -1,6 +1,6 @@
 mod asset;
 mod component;
-mod interpolate;
+pub mod interpolate;
 mod plugin;
 mod resource;
 mod systems;
