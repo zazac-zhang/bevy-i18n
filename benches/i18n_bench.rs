@@ -1,4 +1,5 @@
 use bevy::asset::Assets;
+use bevy::prelude::*;
 use bevy_i18n::prelude::*;
 use std::collections::HashMap;
 
@@ -51,6 +52,13 @@ fn lookup_cache_hit() {
     let _ = i18n.get("key_50", &[("name", "World")], &assets);
     // Second lookup hits cache
     divan::black_box(i18n.get("key_50", &[("name", "World")], &assets));
+}
+
+#[divan::bench]
+fn lookup_cache_miss() {
+    let (i18n, assets) = setup_i18n();
+    // Different keys each time = always miss
+    divan::black_box(i18n.get("nonexistent_key", &[], &assets));
 }
 
 #[divan::bench]
@@ -130,4 +138,101 @@ fn interpolate_with_vars() {
         ], None)
         .into_owned(),
     );
+}
+
+// ── System-level benchmarks (simulated ECS pipeline) ──────────────────
+
+/// Benchmark: I18n.get through the full lookup path (cache + asset lookup).
+#[divan::bench(args = [10, 100, 500])]
+fn full_lookup_pipeline(count: usize) {
+    let (i18n, assets) = setup_i18n();
+
+    for i in 0..count {
+        let key = format!("key_{}", i % 50);
+        divan::black_box(i18n.get(&key, &[("name", "World")], &assets));
+    }
+}
+
+/// Benchmark: I18n.get_plural through the full lookup path.
+#[divan::bench(args = [10, 100, 500])]
+fn full_plural_pipeline(count: usize) {
+    let (i18n, assets) = setup_i18n();
+
+    for i in 0..count {
+        let idx = i % 10;
+        let c = (i % 3) as u64;
+        divan::black_box(i18n.get_plural(
+            &format!("items_{idx}"),
+            None,
+            Some(c),
+            &[],
+            &assets,
+        ));
+    }
+}
+
+/// Benchmark: T component dirty-flag resolution pattern.
+#[divan::bench(args = [10, 100, 500])]
+fn dirty_flag_resolution(count: usize) {
+    let mut t_components: Vec<T> = (0..count).map(|i| T::new(format!("key_{i}"))).collect();
+
+    // Simulate locale change: mark all dirty
+    for i in 0..count {
+        t_components[i].mark_dirty();
+    }
+
+    // Simulate resolution: resolve and clear
+    let (i18n, assets) = setup_i18n();
+    for i in 0..count {
+        let t = &mut t_components[i];
+        if t.dirty {
+            let _ = i18n.get_plural(&t.key, t.context.as_deref(), t.count, &[], &assets);
+            t.dirty = false;
+        }
+    }
+}
+
+/// Benchmark: TVar change detection pattern.
+#[divan::bench(args = [10, 100])]
+fn tvar_change_detection(count: usize) {
+    let tvar_values: Vec<TVar> = (0..count).map(|i| TVar::new(format!("{i}"))).collect();
+    let mut t_components: Vec<(T, usize)> = (0..count)
+        .map(|i| (T::new("player.score").with_dynamic_var("score", Entity::from_raw_u32(0).unwrap()), i % count))
+        .collect();
+
+    // Check for changes (simulating tvar lookup)
+    for i in 0..count {
+        let tvar_idx = t_components[i].1;
+        let new_value = tvar_values[tvar_idx].value.clone();
+        let old_value = t_components[i].0
+            .vars
+            .iter()
+            .find(|(k, _)| k == "score")
+            .map(|(_, v)| v.clone());
+
+        if old_value.as_deref() != Some(&new_value) {
+            t_components[i].0.mark_dirty();
+        }
+    }
+}
+
+/// Benchmark: cache hit rate under load.
+#[divan::bench(args = [10, 100, 500])]
+fn cache_hit_rate(count: usize) {
+    let (i18n, assets) = setup_i18n();
+
+    // Warm up cache with repeated keys
+    for _ in 0..count {
+        divan::black_box(i18n.get("key_0", &[("name", "World")], &assets));
+    }
+}
+
+/// Benchmark: many different keys (cache miss pressure).
+#[divan::bench(args = [10, 100, 500])]
+fn cache_pressure(count: usize) {
+    let (i18n, assets) = setup_i18n();
+
+    for i in 0..count {
+        divan::black_box(i18n.get(&format!("key_{i}"), &[("name", "World")], &assets));
+    }
 }

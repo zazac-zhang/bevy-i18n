@@ -5,6 +5,7 @@ game:
 
 player:
   greeting: "Hello, {name}!"
+  score: "Score: {score}"
   inventory:
     zero: "Empty inventory"
     one: "{count} item"

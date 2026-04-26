@@ -5,6 +5,7 @@ game:
 
 player:
   greeting: "你好，{name}！"
+  score: "得分：{score}"
   inventory:
     zero: "背包空空如也"
     one: "{count} 个物品"
