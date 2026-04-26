@@ -33,10 +33,10 @@ fn test_load_locale_yaml() {
     let i18n = app.world().resource::<I18n>();
 
     // Check English translation loaded
-    let greeting = i18n.get("player.greeting", &[("name", "Hero")], &locales);
+    let greeting = i18n.get("player.greeting", [("name", "Hero")].as_slice(), locales);
     assert_eq!(greeting, "Hello, Hero!");
 
-    let title = i18n.get("game.title", &[], &locales);
+    let title = i18n.get("game.title", [].as_slice(), locales);
     assert_eq!(title, "Star Trek");
 }
 
@@ -71,10 +71,10 @@ fn test_switch_locale() {
     let locales = app.world().resource::<bevy::asset::Assets<I18nAsset>>();
     let i18n = app.world().resource::<I18n>();
 
-    let title = i18n.get("game.title", &[], &locales);
+    let title = i18n.get("game.title", [].as_slice(), locales);
     assert_eq!(title, "星际迷航");
 
-    let greeting = i18n.get("player.greeting", &[("name", "张三")], &locales);
+    let greeting = i18n.get("player.greeting", [("name", "张三")].as_slice(), locales);
     assert_eq!(greeting, "你好，张三！");
 }
 

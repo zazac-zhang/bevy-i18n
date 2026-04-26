@@ -54,8 +54,8 @@
 - [x] `T::with_context(key, context)` 构造器
 
 ### 10. 命名空间
-- [ ] 大型项目中按模块拆分翻译文件
-- [ ] `T::ns("menu").key("quit")` 链式调用
+- [x] 大型项目中按模块拆分翻译文件
+- [x] `T::ns("menu").key("quit")` 链式调用
 
 ### 11. CLI 提取工具
 - [ ] `cargo i18n-extract` 扫描代码中的 `T::new()` 调用

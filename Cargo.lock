@@ -480,6 +480,7 @@ name = "bevy_i18n"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "regex",
  "serde",
  "serde_yaml",
 ]
