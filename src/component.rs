@@ -103,6 +103,48 @@ impl T {
     pub fn mark_dirty(&mut self) {
         self.dirty = true;
     }
+
+    /// Create a namespace builder for namespaced key lookup.
+    ///
+    /// Use this to organize translations by module in large projects.
+    /// The namespace is prepended to the key as `namespace.key`.
+    ///
+    /// # Example
+    /// ```ignore
+    /// T::ns("ui.menu").key("quit")        // looks up "ui.menu.quit"
+    /// T::ns("settings.audio").key("volume") // looks up "settings.audio.volume"
+    /// ```
+    pub fn ns(namespace: impl Into<String>) -> NamespaceBuilder {
+        NamespaceBuilder {
+            namespace: namespace.into(),
+        }
+    }
+}
+
+/// Builder for namespaced T components. Created by `T::ns()`.
+#[derive(Clone, Debug)]
+pub struct NamespaceBuilder {
+    namespace: String,
+}
+
+impl NamespaceBuilder {
+    /// Create a T component with the namespaced key.
+    pub fn key(self, key: impl Into<String>) -> T {
+        let key: String = key.into();
+        T::new(format!("{}.{}", self.namespace, key))
+    }
+
+    /// Create a T component with namespaced key and variable substitutions.
+    pub fn with_vars(self, key: impl Into<String>, vars: &[(&str, &str)]) -> T {
+        let key: String = key.into();
+        T::with_vars(format!("{}.{}", self.namespace, key), vars)
+    }
+
+    /// Create a T component with namespaced key and plural count.
+    pub fn plural(self, key: impl Into<String>, count: u64) -> T {
+        let key: String = key.into();
+        T::plural(format!("{}.{}", self.namespace, key), count)
+    }
 }
 
 #[cfg(test)]
@@ -141,5 +183,28 @@ mod tests {
         t.dirty = false;
         t.mark_dirty();
         assert!(t.dirty);
+    }
+
+    #[test]
+    fn test_ns_builder() {
+        let t = T::ns("ui.menu").key("quit");
+        assert_eq!(t.key, "ui.menu.quit");
+        assert!(t.context.is_none());
+        assert!(t.vars.is_empty());
+        assert!(t.dirty);
+    }
+
+    #[test]
+    fn test_ns_with_vars() {
+        let t = T::ns("player").with_vars("greeting", &[("name", "Hero")]);
+        assert_eq!(t.key, "player.greeting");
+        assert_eq!(t.vars.len(), 1);
+    }
+
+    #[test]
+    fn test_ns_plural() {
+        let t = T::ns("inventory").plural("items", 5);
+        assert_eq!(t.key, "inventory.items");
+        assert_eq!(t.count, Some(5));
     }
 }

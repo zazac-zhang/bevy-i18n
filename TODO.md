@@ -50,8 +50,8 @@
 - [x] locale 规则配置 (小数位数、千位分隔符等)
 
 ### 9. 上下文翻译 (msgctxt)
-- [ ] YAML 中支持 `key: { context: "menu", text: "翻译" }` 结构
-- [ ] `T::with_context(key, context)` 构造器
+- [x] YAML 中支持 `key: { context: "menu", text: "翻译" }` 结构
+- [x] `T::with_context(key, context)` 构造器
 
 ### 10. 命名空间
 - [ ] 大型项目中按模块拆分翻译文件
