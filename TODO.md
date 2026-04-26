@@ -3,10 +3,10 @@
 ## Phase 1: 核心功能完善
 
 ### 1. T::plural 组件
-- [ ] 新增 `T::plural(key, count)` 构造器
-- [ ] 在 `I18n::get` 中支持复数选择：根据 count 和 locale 规则选择 zero/one/other
-- [ ] `update_text_system` 中传递 count 参数
-- [ ] 测试：多语言复数形式 (en: 0/1/2, zh 不分单复数)
+- [x] 新增 `T::plural(key, count)` 构造器
+- [x] 在 `I18n::get_plural` 中支持复数选择：根据 count 和 locale 规则选择 zero/one/other
+- [x] `update_text_system` 中传递 count 参数
+- [x] 测试：多语言复数形式 (en: 0/1/2, zh 不分单复数)
 
 ### 2. 语言回退 (fallback locale)
 - [ ] `I18n` 添加 `fallback_locale: Option<String>`

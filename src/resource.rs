@@ -10,6 +10,7 @@ use crate::interpolate::interpolate;
 #[derive(Resource, Default)]
 pub struct I18n {
     current_locale: String,
+    fallback_locale: Option<String>,
     locale_map: HashMap<String, Handle<I18nAsset>>,
     locale_changed: bool,
 }
@@ -26,6 +27,11 @@ impl I18n {
             self.current_locale = locale.to_string();
             self.locale_changed = true;
         }
+    }
+
+    /// Set the fallback locale. Used when a key is missing in the current locale.
+    pub fn set_fallback_locale(&mut self, locale: impl Into<String>) {
+        self.fallback_locale = Some(locale.into());
     }
 
     /// Get current locale identifier.
@@ -111,8 +117,23 @@ impl I18n {
 
         match asset.get(&template_key) {
             Some(template) => interpolate(template, &resolved_refs).into_owned(),
-            None => key.to_string(),
+            None => self
+                .try_fallback(&template_key, &resolved_refs, locales)
+                .unwrap_or_else(|| key.to_string()),
         }
+    }
+
+    fn try_fallback(
+        &self,
+        key: &str,
+        vars: &[(&str, &str)],
+        locales: &Assets<I18nAsset>,
+    ) -> Option<String> {
+        let fallback = self.fallback_locale.as_ref()?;
+        let handle = self.locale_map.get(fallback)?;
+        let fallback_asset = locales.get(handle.id())?;
+        let template = fallback_asset.get(key)?;
+        Some(interpolate(template, vars).into_owned())
     }
 
     /// Check if a locale's asset is loaded.
@@ -217,5 +238,33 @@ mod tests {
         assert_eq!(i18n.get_plural("items", Some(1), &[], &assets), "1 item");
         assert_eq!(i18n.get_plural("items", Some(5), &[], &assets), "5 items");
         assert_eq!(i18n.get_plural("items", Some(0), &[], &assets), "No items");
+    }
+
+    #[test]
+    fn test_fallback_locale() {
+        let mut assets = Assets::<I18nAsset>::default();
+
+        // English has all keys
+        let mut en_entries = std::collections::HashMap::new();
+        en_entries.insert("greeting".to_string(), "Hello!".to_string());
+        en_entries.insert("farewell".to_string(), "Goodbye!".to_string());
+        let en_handle = assets.add(I18nAsset::new(en_entries));
+
+        // Chinese only has greeting, missing farewell
+        let mut zh_entries = std::collections::HashMap::new();
+        zh_entries.insert("greeting".to_string(), "你好！".to_string());
+        let zh_handle = assets.add(I18nAsset::new(zh_entries));
+
+        let mut i18n = I18n::default();
+        i18n.add_locale("en_US", en_handle);
+        i18n.add_locale("zh_CN", zh_handle);
+        i18n.set_locale("zh_CN");
+        i18n.set_fallback_locale("en_US");
+
+        // Key exists in zh_CN - should use zh translation
+        assert_eq!(i18n.get("greeting", &[], &assets), "你好！");
+
+        // Key missing in zh_CN - should fallback to en_US
+        assert_eq!(i18n.get("farewell", &[], &assets), "Goodbye!");
     }
 }
