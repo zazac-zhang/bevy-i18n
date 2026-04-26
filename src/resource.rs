@@ -44,6 +44,24 @@ impl I18n {
     /// Look up a translation key with optional variable interpolation.
     /// Returns the translated string, or the key itself if not found.
     pub fn get(&self, key: &str, vars: &[(&str, &str)], locales: &Assets<I18nAsset>) -> String {
+        self.get_plural(key, None, vars, locales)
+    }
+
+    /// Look up a translation key with plural form selection and variable interpolation.
+    ///
+    /// If `count` is Some, selects the appropriate plural form:
+    /// - `0` → `{key}.zero` (falls back to `{key}.other`)
+    /// - `1` → `{key}.one`
+    /// - `2+` → `{key}.other`
+    ///
+    /// Returns the translated string, or the key itself if not found.
+    pub fn get_plural(
+        &self,
+        key: &str,
+        count: Option<u64>,
+        vars: &[(&str, &str)],
+        locales: &Assets<I18nAsset>,
+    ) -> String {
         let Some(handle) = self.locale_map.get(&self.current_locale) else {
             return key.to_string();
         };
@@ -52,11 +70,49 @@ impl I18n {
             return key.to_string();
         };
 
-        let Some(template) = asset.get(key) else {
-            return key.to_string();
+        // Resolve the actual key based on count
+        let template_key = match count {
+            None => key.to_string(),
+            Some(0) => asset
+                .get(&format!("{key}.zero"))
+                .map(|_| format!("{key}.zero"))
+                .or_else(|| asset.get(&format!("{key}.other")).map(|_| format!("{key}.other")))
+                .unwrap_or_else(|| key.to_string()),
+            Some(1) => asset
+                .get(&format!("{key}.one"))
+                .map(|_| format!("{key}.one"))
+                .unwrap_or_else(|| key.to_string()),
+            Some(_) => asset
+                .get(&format!("{key}.other"))
+                .map(|_| format!("{key}.other"))
+                .unwrap_or_else(|| key.to_string()),
         };
 
-        interpolate(template, vars).into_owned()
+        // Inject count into vars if not already present
+        let resolved_vars: Vec<(String, String)> = if let Some(c) = count {
+            let mut v: Vec<(String, String)> = vars
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect();
+            if !v.iter().any(|(k, _)| k == "count") {
+                v.push(("count".to_string(), c.to_string()));
+            }
+            v
+        } else {
+            vars.iter()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect()
+        };
+
+        let resolved_refs: Vec<(&str, &str)> = resolved_vars
+            .iter()
+            .map(|(k, v)| (k.as_str(), v.as_str()))
+            .collect();
+
+        match asset.get(&template_key) {
+            Some(template) => interpolate(template, &resolved_refs).into_owned(),
+            None => key.to_string(),
+        }
     }
 
     /// Check if a locale's asset is loaded.
@@ -140,5 +196,26 @@ mod tests {
 
         let text = i18n.get("greet", &[("name", "World")], &assets);
         assert_eq!(text, "Hello, World!");
+    }
+
+    #[test]
+    fn test_plural_selection() {
+        let mut assets = Assets::<I18nAsset>::default();
+
+        let mut entries = std::collections::HashMap::new();
+        entries.insert("items.zero".to_string(), "No items".to_string());
+        entries.insert("items.one".to_string(), "{count} item".to_string());
+        entries.insert("items.other".to_string(), "{count} items".to_string());
+        let asset = I18nAsset::new(entries);
+        let handle = assets.add(asset);
+
+        let mut i18n = I18n::default();
+        i18n.add_locale("en", handle);
+        i18n.set_locale("en");
+
+        assert_eq!(i18n.get_plural("items", Some(0), &[], &assets), "No items");
+        assert_eq!(i18n.get_plural("items", Some(1), &[], &assets), "1 item");
+        assert_eq!(i18n.get_plural("items", Some(5), &[], &assets), "5 items");
+        assert_eq!(i18n.get_plural("items", Some(0), &[], &assets), "No items");
     }
 }

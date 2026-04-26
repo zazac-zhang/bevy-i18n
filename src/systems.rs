@@ -35,7 +35,7 @@ pub fn update_text_system(
         let vars: Vec<(&str, &str)> =
             t.vars.iter().map(|(k, v): &(String, String)| (k.as_str(), v.as_str())).collect::<Vec<_>>();
 
-        let translated = i18n.get(&t.key, &vars, &locales);
+        let translated = i18n.get_plural(&t.key, t.count, &vars, &locales);
 
         // Update the text content and clear the dirty flag
         text.0 = translated;

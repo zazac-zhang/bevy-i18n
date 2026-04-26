@@ -18,6 +18,8 @@ pub struct T {
     pub key: String,
     /// Variable substitutions (key -> value)
     pub vars: Vec<(String, String)>,
+    /// Count for plural form selection (None = static)
+    pub count: Option<u64>,
     /// Whether the text needs to be re-resolved
     pub dirty: bool,
 }
@@ -28,6 +30,7 @@ impl T {
         Self {
             key: key.into(),
             vars: Vec::new(),
+            count: None,
             dirty: true,
         }
     }
@@ -45,6 +48,27 @@ impl T {
                 .iter()
                 .map(|(k, v)| (k.to_string(), v.to_string()))
                 .collect(),
+            count: None,
+            dirty: true,
+        }
+    }
+
+    /// Create a T component for a plural translation key.
+    ///
+    /// The `count` parameter determines which plural form to use:
+    /// - `0` → `key.zero` (or `key.other` if zero is missing)
+    /// - `1` → `key.one`
+    /// - `2+` → `key.other`
+    ///
+    /// # Example
+    /// ```ignore
+    /// T::plural("player.inventory", items.len() as u64)
+    /// ```
+    pub fn plural(key: impl Into<String>, count: u64) -> Self {
+        Self {
+            key: key.into(),
+            vars: Vec::new(),
+            count: Some(count),
             dirty: true,
         }
     }
@@ -64,6 +88,7 @@ mod tests {
         let t = T::new("game.title");
         assert_eq!(t.key, "game.title");
         assert!(t.vars.is_empty());
+        assert!(t.count.is_none());
         assert!(t.dirty);
     }
 
@@ -72,6 +97,15 @@ mod tests {
         let t = T::with_vars("greeting", &[("name", "World")]);
         assert_eq!(t.key, "greeting");
         assert_eq!(t.vars.len(), 1);
+        assert!(t.count.is_none());
+        assert!(t.dirty);
+    }
+
+    #[test]
+    fn test_t_plural() {
+        let t = T::plural("items.count", 5);
+        assert_eq!(t.key, "items.count");
+        assert_eq!(t.count, Some(5));
         assert!(t.dirty);
     }
 
