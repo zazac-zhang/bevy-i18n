@@ -1,10 +1,29 @@
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use bevy::asset::{Assets, Handle};
 use bevy::prelude::Resource;
 
 use crate::asset::I18nAsset;
 use crate::interpolate::interpolate;
+
+/// Configuration for missing key warnings.
+#[derive(Clone, Debug)]
+pub struct MissingKeyConfig {
+    /// Whether to warn on missing keys (default: true in debug, false in release).
+    pub warn_on_missing: bool,
+}
+
+impl Default for MissingKeyConfig {
+    fn default() -> Self {
+        Self {
+            #[cfg(debug_assertions)]
+            warn_on_missing: true,
+            #[cfg(not(debug_assertions))]
+            warn_on_missing: false,
+        }
+    }
+}
 
 /// Central i18n resource — manages current locale and registered locale handles.
 #[derive(Resource, Default)]
@@ -13,6 +32,9 @@ pub struct I18n {
     fallback_locale: Option<String>,
     locale_map: HashMap<String, Handle<I18nAsset>>,
     locale_changed: bool,
+    missing_key_config: MissingKeyConfig,
+    /// Count of missing key lookups since last reset.
+    missing_key_count: AtomicU64,
 }
 
 impl I18n {
@@ -117,9 +139,17 @@ impl I18n {
 
         match asset.get(&template_key) {
             Some(template) => interpolate(template, &resolved_refs).into_owned(),
-            None => self
-                .try_fallback(&template_key, &resolved_refs, locales)
-                .unwrap_or_else(|| key.to_string()),
+            None => {
+                let locale = self.current_locale.clone();
+                match self.try_fallback(&template_key, &resolved_refs, locales) {
+                    Some(result) => result,
+                    None => {
+                        // Both current locale and fallback failed
+                        self.warn_missing_key(key, &locale);
+                        key.to_string()
+                    }
+                }
+            }
         }
     }
 
@@ -142,6 +172,29 @@ impl I18n {
             .get(locale)
             .and_then(|h| locales.get(h.id()))
             .is_some()
+    }
+
+    /// Configure missing key warning behavior.
+    pub fn set_missing_key_config(&mut self, config: MissingKeyConfig) {
+        self.missing_key_config = config;
+    }
+
+    /// Get the current missing key config.
+    pub fn missing_key_config(&self) -> &MissingKeyConfig {
+        &self.missing_key_config
+    }
+
+    /// Warn about a missing key and increment the counter.
+    fn warn_missing_key(&self, key: &str, locale: &str) {
+        self.missing_key_count.fetch_add(1, Ordering::Relaxed);
+        if self.missing_key_config.warn_on_missing {
+            eprintln!("[i18n] Missing key '{key}' in locale '{locale}'");
+        }
+    }
+
+    /// Reset the missing key counter.
+    pub fn reset_missing_key_count(&self) -> u64 {
+        self.missing_key_count.swap(0, Ordering::Relaxed)
     }
 }
 

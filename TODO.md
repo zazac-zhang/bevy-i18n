@@ -9,10 +9,10 @@
 - [x] 测试：多语言复数形式 (en: 0/1/2, zh 不分单复数)
 
 ### 2. 语言回退 (fallback locale)
-- [ ] `I18n` 添加 `fallback_locale: Option<String>`
-- [ ] `set_locale` 时如果缺少 key，自动 fallback
-- [ ] `I18n::set_fallback_locale()` 方法
-- [ ] 测试：en 缺少 key 时 fallback 到 zh
+- [x] `I18n` 添加 `fallback_locale: Option<String>`
+- [x] `set_locale` 时如果缺少 key，自动 fallback
+- [x] `I18n::set_fallback_locale()` 方法
+- [x] 测试：en 缺少 key 时 fallback 到 zh
 
 ### 3. 动态变量更新
 - [ ] 新增 `TVar` 组件，用于标记动态变量实体
