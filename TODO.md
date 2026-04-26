@@ -26,9 +26,9 @@
 - [ ] 可选：写入 `.missing_keys.yaml` 文件
 
 ### 5. 翻译缓存
-- [ ] `I18n` 添加 `(key, vars_hash) -> String` 缓存
-- [ ] 缓存仅在 locale 变化或 dirty 时失效
-- [ ] 测试：缓存命中/未命中性能对比
+- [x] `I18n` 添加 `(key, vars_hash) -> String` 缓存
+- [x] 缓存仅在 locale 变化或 dirty 时失效
+- [x] 测试：缓存命中/未命中性能对比
 
 ### 6. 热重载刷新
 - [ ] 注册 `AssetEvent<I18nAsset>` 监听

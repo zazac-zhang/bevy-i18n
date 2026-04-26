@@ -3,7 +3,7 @@ use bevy::asset::AssetApp;
 
 use crate::asset::{I18nAsset, I18nLoader};
 use crate::resource::I18n;
-use crate::systems::{resolve_translations, update_text_system};
+use crate::systems::{hot_reload_system, resolve_translations, update_text_system};
 
 /// Plugin that registers all i18n types, assets, loaders, and systems.
 ///
@@ -20,6 +20,6 @@ impl Plugin for I18nPlugin {
         app.init_asset::<I18nAsset>()
             .init_asset_loader::<I18nLoader>()
             .init_resource::<I18n>()
-            .add_systems(Update, (resolve_translations, update_text_system));
+            .add_systems(Update, (resolve_translations, update_text_system, hot_reload_system));
     }
 }

@@ -1,4 +1,5 @@
-use bevy::asset::Assets;
+use bevy::asset::{AssetEvent, Assets};
+use bevy::ecs::message::MessageReader;
 use bevy::prelude::*;
 use bevy::ui::prelude::Text;
 
@@ -40,5 +41,25 @@ pub fn update_text_system(
         // Update the text content and clear the dirty flag
         text.0 = translated;
         t.dirty = false;
+    }
+}
+
+/// Listens for I18nAsset changes and marks all T components dirty on reload.
+pub fn hot_reload_system(
+    mut events: MessageReader<AssetEvent<I18nAsset>>,
+    mut i18n: ResMut<I18n>,
+    mut query: Query<&mut T>,
+) {
+    for event in events.read() {
+        if matches!(
+            event,
+            AssetEvent::LoadedWithDependencies { .. } | AssetEvent::Modified { .. }
+        ) {
+            // Clear translation cache and mark all T components dirty
+            i18n.clear_translation_cache();
+            for mut t in &mut query {
+                t.mark_dirty();
+            }
+        }
     }
 }
