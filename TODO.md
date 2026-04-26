@@ -37,8 +37,8 @@
 - [ ] 测试：修改 YAML 文件后 UI 自动刷新
 
 ### 7. 字体回退 (per-locale font)
-- [ ] `I18n::set_locale_font(handle: Handle<Font>)`
-- [ ] 切换语言时自动更新 `TextStyle.font`
+- [x] `I18n::set_locale_font(handle: Handle<Font>)`
+- [x] 切换语言时自动更新 `TextFont.font`
 - [ ] 或者在 `T` 组件中指定 `font_handle` 字段
 
 ---

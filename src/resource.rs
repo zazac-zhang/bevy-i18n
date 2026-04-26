@@ -7,7 +7,7 @@ use bevy::asset::{Assets, Handle};
 use bevy::prelude::{Font, Resource};
 
 use crate::asset::I18nAsset;
-use crate::interpolate::interpolate;
+use crate::interpolate::{interpolate_with_format, NumberFormat};
 
 /// Configuration for missing key warnings.
 #[derive(Clone, Debug)]
@@ -41,6 +41,8 @@ pub struct I18n {
     translation_cache: Mutex<HashMap<(String, u64), String>>,
     /// Per-locale font handles. Used for automatic font fallback.
     locale_fonts: HashMap<String, Handle<Font>>,
+    /// Per-locale number formatting rules. Used for {key::number}/{key::currency}.
+    number_formats: HashMap<String, NumberFormat>,
 }
 
 impl I18n {
@@ -89,6 +91,11 @@ impl I18n {
     /// Get the font handle for the current locale, if set.
     pub fn current_locale_font(&self) -> Option<&Handle<Font>> {
         self.locale_fonts.get(&self.current_locale)
+    }
+
+    /// Set the number formatting rules for a specific locale.
+    pub fn set_locale_number_format(&mut self, locale: &str, format: NumberFormat) {
+        self.number_formats.insert(locale.to_string(), format);
     }
 
     /// Look up a translation key with optional variable interpolation.
@@ -170,7 +177,8 @@ impl I18n {
 
         match asset.get(&template_key) {
             Some(template) => {
-                let resolved = interpolate(template, &resolved_refs).into_owned();
+                let num_format = self.number_formats.get(&self.current_locale);
+                let resolved = interpolate_with_format(template, &resolved_refs, num_format).into_owned();
                 self.translation_cache.lock().unwrap().insert(cache_key, resolved.clone());
                 resolved
             }
@@ -201,7 +209,8 @@ impl I18n {
         let handle = self.locale_map.get(fallback)?;
         let fallback_asset = locales.get(handle.id())?;
         let template = fallback_asset.get(key)?;
-        Some(interpolate(template, vars).into_owned())
+        let num_format = self.number_formats.get(fallback);
+        Some(interpolate_with_format(template, vars, num_format).into_owned())
     }
 
     /// Check if a locale's asset is loaded.
@@ -405,5 +414,46 @@ mod tests {
         // Switch locale — cache should be cleared
         i18n.set_locale("zh");
         assert!(i18n.translation_cache.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_number_formatting() {
+        let mut assets = Assets::<I18nAsset>::default();
+
+        let mut entries = std::collections::HashMap::new();
+        entries.insert(
+            "price".to_string(),
+            "Price: {amount::number} USD".to_string(),
+        );
+        entries.insert(
+            "balance".to_string(),
+            "Balance: {amount::currency}".to_string(),
+        );
+        let handle = assets.add(I18nAsset::new(entries));
+
+        let mut i18n = I18n::default();
+        i18n.add_locale("en", handle);
+        i18n.set_locale("en");
+
+        // US-style number formatting
+        i18n.set_locale_number_format(
+            "en",
+            NumberFormat {
+                thousands_sep: ',',
+                decimal_sep: '.',
+                decimal_places: None,
+                currency_symbol: Some("$".to_string()),
+            },
+        );
+
+        assert_eq!(
+            i18n.get("price", &[("amount", "1234567.89")], &assets),
+            "Price: 1,234,567.89 USD"
+        );
+
+        assert_eq!(
+            i18n.get("balance", &[("amount", "1000")], &assets),
+            "Balance: $ 1,000"
+        );
     }
 }
