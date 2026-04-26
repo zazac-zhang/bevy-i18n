@@ -10,7 +10,6 @@ use crate::resource::I18n;
 /// Marks dirty T components that need text updates.
 pub fn resolve_translations(
     mut i18n: ResMut<I18n>,
-    _locales: Res<Assets<I18nAsset>>,
     mut query: Query<&mut T>,
 ) {
     let locale_changed = i18n.update_from();
@@ -26,9 +25,9 @@ pub fn resolve_translations(
 pub fn update_text_system(
     i18n: Res<I18n>,
     locales: Res<Assets<I18nAsset>>,
-    mut query: Query<(&T, &mut Text)>,
+    mut query: Query<(&mut T, &mut Text)>,
 ) {
-    for (t, mut text) in &mut query {
+    for (mut t, mut text) in &mut query {
         if !t.dirty {
             continue;
         }
@@ -38,7 +37,8 @@ pub fn update_text_system(
 
         let translated = i18n.get(&t.key, &vars, &locales);
 
-        // Update the text content
+        // Update the text content and clear the dirty flag
         text.0 = translated;
+        t.dirty = false;
     }
 }

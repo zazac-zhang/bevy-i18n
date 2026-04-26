@@ -101,7 +101,7 @@ fn test_t_component_updates_text() {
     }
 
     // Check that Text was updated
-    let mut world = app.world_mut();
+    let world = app.world();
     let text = world.entity(entity).get::<Text>().unwrap();
     assert_eq!(text.0, "Star Trek");
 }

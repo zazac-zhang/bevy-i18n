@@ -61,12 +61,12 @@ impl AssetLoader for I18nLoader {
                 let yaml_value: serde_yaml::Value =
                     serde_yaml::from_str(&content).map_err(|e| format!("YAML parse error: {e}"))?;
                 let entries = flatten_yaml_value(&yaml_value);
-                return Ok(I18nAsset { entries });
+                return Ok(I18nAsset::new(entries));
             }
             #[cfg(feature = "po")]
             "po" => {
                 let entries = parse_po(&content);
-                return Ok(I18nAsset { entries });
+                return Ok(I18nAsset::new(entries));
             }
             _ => {}
         }
