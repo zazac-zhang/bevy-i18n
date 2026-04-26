@@ -58,8 +58,8 @@
 - [x] `T::ns("menu").key("quit")` 链式调用
 
 ### 11. CLI 提取工具
-- [ ] `cargo i18n-extract` 扫描代码中的 `T::new()` 调用
-- [ ] 自动生成 `locales/template.yaml`
+- [x] `cargo i18n-extract` 扫描代码中的 `T::new()` 调用
+- [x] 自动生成 `locales/template.yaml`
 
 ---
 
