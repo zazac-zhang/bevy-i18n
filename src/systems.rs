@@ -134,11 +134,3 @@ pub fn update_localizable<T: Localizable + Component<Mutability = Mutable>>(
     }
 }
 
-/// Alias for update_localizable.
-pub fn update_i18n<T: Localizable + Component<Mutability = Mutable>>(
-    i18n: Res<I18n>,
-    locales: Res<Assets<I18nAsset>>,
-    query: Query<(&mut I18nText, &mut T)>,
-) {
-    update_localizable::<T>(i18n, locales, query)
-}

@@ -10,21 +10,13 @@ A lightweight internationalization plugin for Bevy 0.18.
 - **Fallback locale** — automatic fallback when a key is missing
 - **Hot reload** — edit YAML files and see changes in real-time
 - **Per-locale fonts** — set different fonts for different locales
-- **Number/currency formatting** — `{amount::number}`, `{price::currency}`
-- **Context disambiguation** — same word, different translations
-- **Namespacing** — `T::ns("ui.menu").key("quit")` builder pattern
+- **Number/currency formatting** — `{amount::currency}`, `{price::number}`
+- **Context disambiguation** — same word, different translations (`msgctxt`)
+- **Namespacing** — `I18nText::ns("ui.menu").key("quit")` builder pattern
+- **Dynamic variables** — `TVar` component for runtime-updating values
 - **Missing key warnings** — debug-mode alerts for untranslated keys
-- **Translation cache** — fast lookups with automatic invalidation
-
-## Installation
-
-Add to your `Cargo.toml`:
-
-```toml
-[dependencies]
-bevy = "0.18"
-bevy_i18n = { path = "path/to/bevy_I18n" }
-```
+- **CLI tools** — extract keys from source, validate locale consistency
+- **Derive macro** — `#[derive(I18n)]` for custom components (optional feature)
 
 ## Quick Start
 
@@ -44,13 +36,11 @@ fn main() {
 
 ### 2. Create locale files
 
-Place YAML files in `assets/locales/`:
-
 ```yaml
 # assets/locales/en.yaml
 greeting: "Hello, {name}!"
 game.title: "Star Trek"
-items.count:
+player.inventory:
   zero: "No items"
   one: "One item"
   other: "{count} items"
@@ -61,7 +51,7 @@ price: "Price: {amount::currency}"
 # assets/locales/zh.yaml
 greeting: "你好，{name}！"
 game.title: "星际迷航"
-items.count:
+player.inventory:
   zero: "没有物品"
   one: "一个物品"
   other: "{count} 个物品"
@@ -71,9 +61,6 @@ price: "价格: {amount::currency}"
 ### 3. Load locales and spawn text
 
 ```rust
-use bevy::prelude::*;
-use bevy_i18n::prelude::*;
-
 fn setup(
     asset_server: Res<AssetServer>,
     mut i18n: ResMut<I18n>,
@@ -85,24 +72,21 @@ fn setup(
     i18n.add_locale("en", en);
     i18n.add_locale("zh", zh);
     i18n.set_locale("en");
+    i18n.set_fallback_locale("en");
 
-    // Static text
-    commands.spawn((
-        Text::new(""),
-        T::new("game.title"),
-    ));
+    // Simple text
+    commands.spawn((Text::new(""), I18nText::new("game.title")));
 
     // With variables
     commands.spawn((
         Text::new(""),
-        T::with_vars("greeting", &[("name", "Player")]),
+        I18nText::with_vars("greeting", &[("name", "Player")]),
     ));
 
     // Plural forms
-    let item_count = 5;
     commands.spawn((
         Text::new(""),
-        T::plural("items.count", item_count),
+        I18nText::plural("player.inventory", 5),
     ));
 }
 ```
@@ -112,21 +96,42 @@ fn setup(
 ```rust
 fn switch_to_chinese(mut i18n: ResMut<I18n>) {
     i18n.set_locale("zh");
-    // All T components automatically update
+    // All I18nText components automatically update
 }
 ```
 
 ## API Reference
 
-### T Component
+### I18nText Component
 
 | Constructor | Description |
 |-------------|-------------|
-| `T::new(key)` | Simple key lookup |
-| `T::with_vars(key, &[("var", "value")])` | Key with variable substitutions |
-| `T::plural(key, count)` | Key with plural form selection |
-| `T::with_context(key, context)` | Key with context disambiguation |
-| `T::ns("namespace").key(subkey)` | Namespaced lookup (`namespace.subkey`) |
+| `I18nText::new(key)` | Simple key lookup |
+| `I18nText::with_vars(key, &[("var", "value")])` | Key with variable substitutions |
+| `I18nText::plural(key, count)` | Key with plural form selection |
+| `I18nText::with_context(key, context)` | Key with context disambiguation |
+| `I18nText::ns("namespace").key(subkey)` | Namespaced lookup (`namespace.subkey`) |
+| `I18nText::ns("ns").with_vars(key, vars)` | Namespace with variables |
+
+### Dynamic Variables (TVar)
+
+For values that change at runtime (score, timer, etc.):
+
+```rust
+// Spawn a TVar entity
+let score_entity = commands.spawn(TVar::new("0")).id();
+
+// Reference it from a text entity
+commands.spawn((
+    Text::new(""),
+    I18nText::new("player.score").with_dynamic_var("score", score_entity),
+));
+
+// Update the TVar value — text auto-updates
+if let Ok(mut tvar) = score_query.get_mut(score_entity) {
+    tvar.value = "1000".to_string();
+}
+```
 
 ### I18n Resource
 
@@ -137,16 +142,11 @@ fn switch_to_chinese(mut i18n: ResMut<I18n>) {
 | `set_fallback_locale(locale)` | Set fallback for missing keys |
 | `set_locale_font(handle)` | Set font for current locale |
 | `set_locale_number_format(locale, format)` | Set number formatting rules |
-| `set_missing_key_config(config)` | Configure missing key warnings |
-| `reset_missing_key_count()` | Reset and return missing key counter |
-| `get(key, vars, assets)` | Look up a translation |
-| `is_locale_loaded(locale, assets)` | Check if a locale is loaded |
+| `get(key, vars, assets)` | Look up a translation directly |
 
 ### NumberFormat
 
 ```rust
-use bevy_i18n::NumberFormat;
-
 i18n.set_locale_number_format("en", NumberFormat {
     thousands_sep: ',',
     decimal_sep: '.',
@@ -155,27 +155,78 @@ i18n.set_locale_number_format("en", NumberFormat {
 });
 ```
 
-## Format Specifiers
+### Custom Components (Localizable trait)
 
-Translations can use format specifiers for automatic number/currency formatting:
-
-```yaml
-# YAML
-balance: "Balance: {amount::currency}"
-score: "Score: {points::number}"
-```
+To translate custom text components, implement `Localizable`:
 
 ```rust
-// Set up the format rules
-i18n.set_locale_number_format("en", NumberFormat {
-    thousands_sep: ',',
-    decimal_sep: '.',
-    decimal_places: Some(2),
-    currency_symbol: Some("$".to_string()),
-});
+#[derive(Component)]
+struct CustomText { content: String }
 
-// Results in: "Balance: $ 1,234.50"
-// Results in: "Score: 1,000.00"
+impl Localizable for CustomText {
+    fn translations() -> &'static [(&'static str, &'static str)] {
+        &[("content", "custom.message")]
+    }
+    fn set_field(&mut self, field: &str, value: &str) {
+        if field == "content" { self.content = value.into(); }
+    }
+}
+```
+
+Then register the generic update system:
+
+```rust
+app.add_systems(Update, update_localizable::<CustomText>);
+```
+
+And spawn with `I18nText`:
+
+```rust
+commands.spawn((
+    CustomText::default(),
+    I18nText::new("custom.message"),
+));
+```
+
+### Derive Macro (optional)
+
+Enable with `features = ["derive"]`:
+
+```rust
+use bevy::prelude::*;
+use bevy_i18n::prelude::*;
+
+#[derive(I18n, Component)]
+struct DialogBox {
+    #[i18n(key = "dialog.title")]
+    title: String,
+    #[i18n(key = "dialog.body")]
+    body: String,
+    color: Color, // non-String field, auto-ignored
+}
+
+// With namespace
+#[derive(I18n, Component)]
+#[i18n(namespace = "hud")]
+struct HUD {
+    #[i18n(key = "score")]   // → "hud.score"
+    score_text: String,
+}
+```
+
+## How It Works
+
+`I18nText::new()` does **not** translate — it creates a marker component with `dirty: true`.
+The `update_text_system` system runs every frame, finds all entities with both `I18nText` and `Text`,
+translates the dirty ones, and clears the flag. Language changes set all components dirty again,
+triggering automatic re-translation.
+
+```
+commands.spawn((Text::new(""), I18nText::new("key")))
+    → Entity { Text(""), I18nText { dirty: true } }
+    → update_text_system finds (I18nText, Text) pair
+    → translates and sets Text content, dirty = false
+    → on locale change, all dirty = true → re-translate
 ```
 
 ## CLI Tools
@@ -183,19 +234,14 @@ i18n.set_locale_number_format("en", NumberFormat {
 ### Extract keys from source code
 
 ```bash
-# Scan src/ and generate template
 cargo run --bin i18n-extract -- src/
-
-# Output to a specific file
 cargo run --bin i18n-extract -- src/ locales/template.yaml
 ```
 
 ### Validate locale consistency
 
 ```bash
-# Check all locales have the same keys
 cargo run --bin i18n-validate -- assets/locales
-
 # Returns non-zero exit code if issues found (useful for CI)
 ```
 
@@ -205,15 +251,26 @@ cargo run --bin i18n-validate -- assets/locales
 src/
   lib.rs          - Module declarations and prelude
   asset.rs        - I18nAsset type and YAML/PO loaders
-  component.rs    - T component and NamespaceBuilder
+  component.rs    - I18nText / TVar components, Localizable trait
   interpolate.rs  - Variable interpolation and NumberFormat
   plugin.rs       - I18nPlugin registration
   resource.rs     - I18n resource (locale management)
   systems.rs      - Translation resolution and hot reload systems
   bin/
-    i18n-extract.rs   - Key extraction CLI tool
-    i18n-validate.rs  - Locale validation CLI tool
+    i18n-extract.rs   - Key extraction CLI
+    i18n-validate.rs  - Locale validation CLI
+derive/
+  src/lib.rs      - #[derive(I18n)] proc-macro
+  src/attr.rs     - Attribute parsing
 ```
+
+## Examples
+
+| Example | Description | Run |
+|---------|-------------|-----|
+| `basic` | Minimal setup — load locales, spawn text | `cargo run --example basic` |
+| `locale_switch` | Press Space to toggle between languages | `cargo run --example locale_switch` |
+| `advanced_features` | All features: plural, context, TVar, formatting | `cargo run --example advanced_features` |
 
 ## License
 

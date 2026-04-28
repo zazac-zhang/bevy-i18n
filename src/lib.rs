@@ -12,7 +12,7 @@ pub mod prelude {
     pub use crate::interpolate::NumberFormat;
     pub use crate::plugin::I18nPlugin;
     pub use crate::resource::I18n;
-    pub use crate::systems::{update_i18n, update_localizable, update_text_system};
+    pub use crate::systems::{update_localizable, update_text_system};
 
     #[cfg(feature = "derive")]
     pub use bevy_i18n_derive::I18n;

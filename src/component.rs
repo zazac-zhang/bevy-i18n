@@ -43,31 +43,11 @@ impl Localizable for Text {
 /// Add this alongside Bevy's `Text` component to have the text
 /// content automatically resolved from the current locale.
 ///
-/// # Naming
-///
-/// - **Preferred**: `I18nText` - explicit, avoids conflicts with potential
-///   Bevy `Translation` components or other libraries
-/// - **Alias**: `T` - for brevity in frequently-used code
-///
-/// # Why I18nText?
-///
-/// 1. **Avoids naming conflicts**: Won't clash with Bevy's `Transform.translation`
-///    or potential future `Translation` components
-/// 2. **Clear context**: Immediately indicates internationalization
-/// 3. **Searchable**: Unique name easy to find in codebases
-///
 /// # Example
 /// ```ignore
-/// // Preferred: explicit and clear
 /// commands.spawn((
 ///     Text::new(""),
 ///     I18nText::new("game.title"),
-/// ));
-///
-/// // Also supported: brief and familiar
-/// commands.spawn((
-///     Text::new(""),
-///     T::new("game.title"),
 /// ));
 /// ```
 #[derive(Component, Clone, Debug)]
