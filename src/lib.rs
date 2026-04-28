@@ -21,4 +21,7 @@ pub mod prelude {
 pub use crate::interpolate::NumberFormat;
 
 #[cfg(feature = "derive")]
+pub use crate::component::Localizable;
+
+#[cfg(feature = "derive")]
 pub use bevy_i18n_derive::I18n;

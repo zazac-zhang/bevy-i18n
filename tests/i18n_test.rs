@@ -99,7 +99,7 @@ fn test_t_component_updates_text() {
     // Spawn a text entity with T component
     let entity = app
         .world_mut()
-        .spawn((Text::new(""), T::new("game.title")))
+        .spawn((Text::new(""), I18nText::new("game.title")))
         .id();
 
     // Let assets load and systems run
@@ -137,7 +137,7 @@ fn test_fallback_locale_in_systems() {
     assert_eq!(result, "Star Trek");
 }
 
-// ── Plural translation via T::plural ──────────────────────────────────
+// ── Plural translation via I18nText::plural ──────────────────────────────────
 
 #[test]
 fn test_plural_t_component() {
@@ -153,7 +153,7 @@ fn test_plural_t_component() {
     // Spawn a text with plural T component
     let entity = app
         .world_mut()
-        .spawn((Text::new(""), T::plural("items.count", 5)))
+        .spawn((Text::new(""), I18nText::plural("items.count", 5)))
         .id();
 
     pump_app(&mut app, 20);
@@ -175,7 +175,7 @@ fn test_plural_zero() {
 
     let entity = app
         .world_mut()
-        .spawn((Text::new(""), T::plural("items.count", 0)))
+        .spawn((Text::new(""), I18nText::plural("items.count", 0)))
         .id();
 
     pump_app(&mut app, 20);
@@ -204,7 +204,7 @@ fn test_tvar_updates_text() {
     // Spawn a text that references the TVar
     let entity = app
         .world_mut()
-        .spawn((Text::new(""), T::new("player.score").with_dynamic_var("score", tvar_entity)))
+        .spawn((Text::new(""), I18nText::new("player.score").with_dynamic_var("score", tvar_entity)))
         .id();
 
     pump_app(&mut app, 20);
@@ -238,7 +238,7 @@ fn test_context_translation_t_component() {
 
     let entity = app
         .world_mut()
-        .spawn((Text::new(""), T::with_context("open", "menu")))
+        .spawn((Text::new(""), I18nText::with_context("open", "menu")))
         .id();
 
     pump_app(&mut app, 20);
@@ -264,7 +264,7 @@ fn test_locale_change_refreshes_text() {
 
     let entity = app
         .world_mut()
-        .spawn((Text::new(""), T::new("game.title")))
+        .spawn((Text::new(""), I18nText::new("game.title")))
         .id();
 
     pump_app(&mut app, 20);
@@ -298,4 +298,82 @@ fn test_locale_font_set() {
 
     // The font handle should be retrievable for the current locale
     assert!(i18n.current_locale_font().is_some());
+}
+
+// ── Derive macro tests ──────────────────────────────────────────────
+
+#[cfg(feature = "derive")]
+mod derive_tests {
+    use bevy::prelude::*;
+    use bevy_i18n::prelude::*;
+    use bevy_i18n::Localizable;
+
+    #[test]
+    fn test_derive_single_field() {
+        #[derive(I18n, Component)]
+        struct SimpleLabel {
+            text: String,
+        }
+        let translations = SimpleLabel::translations();
+        assert_eq!(translations.len(), 1);
+        assert_eq!(translations[0], ("text", "text"));
+    }
+
+    #[test]
+    fn test_derive_multi_field_with_keys() {
+        #[derive(I18n, Component)]
+        struct DialogBox {
+            #[i18n(key = "dialog.title")]
+            title: String,
+            #[i18n(key = "dialog.body")]
+            content: String,
+            _unused: i32,
+        }
+        let translations = DialogBox::translations();
+        assert_eq!(translations.len(), 2);
+        assert_eq!(translations[0], ("title", "dialog.title"));
+        assert_eq!(translations[1], ("content", "dialog.body"));
+    }
+
+    #[test]
+    fn test_derive_namespace() {
+        #[derive(I18n, Component)]
+        #[i18n(namespace = "hud")]
+        struct HUD {
+            #[i18n(key = "score")]
+            score_text: String,
+            #[i18n(key = "level")]
+            level_text: String,
+        }
+        let translations = HUD::translations();
+        assert_eq!(translations.len(), 2);
+        assert_eq!(translations[0], ("score_text", "hud.score"));
+        assert_eq!(translations[1], ("level_text", "hud.level"));
+    }
+
+    #[test]
+    fn test_derive_skip_attribute() {
+        #[derive(I18n, Component)]
+        struct PartialLabel {
+            #[i18n(skip)]
+            skipped: String,
+            #[i18n(key = "label.show")]
+            shown: String,
+        }
+        let translations = PartialLabel::translations();
+        assert_eq!(translations.len(), 1);
+        assert_eq!(translations[0], ("shown", "label.show"));
+    }
+
+    #[test]
+    fn test_derive_set_field() {
+        #[derive(I18n, Component)]
+        struct TestLabel {
+            #[i18n(key = "test.label")]
+            text: String,
+        }
+        let mut label = TestLabel { text: String::new() };
+        label.set_field("text", "hello");
+        assert_eq!(label.text, "hello");
+    }
 }
