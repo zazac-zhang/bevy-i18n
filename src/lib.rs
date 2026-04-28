@@ -3,15 +3,22 @@ mod component;
 pub mod interpolate;
 mod plugin;
 mod resource;
-mod systems;
+pub mod systems;
 
 /// Prelude — one-import convenience
 pub mod prelude {
     pub use crate::asset::I18nAsset;
-    pub use crate::component::{T, TVar};
+    pub use crate::component::{I18nText, Localizable, TVar};
     pub use crate::interpolate::NumberFormat;
     pub use crate::plugin::I18nPlugin;
     pub use crate::resource::I18n;
+    pub use crate::systems::{update_i18n, update_localizable, update_text_system};
+
+    #[cfg(feature = "derive")]
+    pub use bevy_i18n_derive::I18n;
 }
 
 pub use crate::interpolate::NumberFormat;
+
+#[cfg(feature = "derive")]
+pub use bevy_i18n_derive::I18n;
