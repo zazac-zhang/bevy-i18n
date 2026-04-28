@@ -1,3 +1,6 @@
+[workspace]
+members = [".", "derive"]
+
 [package]
 name = "bevy_i18n"
 version = "0.1.0"
@@ -10,11 +13,13 @@ bevy = { version = "0.18", default-features = false, features = ["std", "bevy_as
 regex = "1"
 serde = { version = "1", features = ["derive"] }
 serde_yaml = { version = "0.9", optional = true }
+bevy_i18n_derive = { version = "0.1.0", path = "derive", optional = true }
 
 [features]
 default = ["yaml"]
 yaml = ["dep:serde_yaml"]
 po = []
+derive = ["dep:bevy_i18n_derive"]
 
 [dev-dependencies]
 bevy = { version = "0.18", default-features = false, features = ["std", "bevy_asset", "bevy_text", "bevy_ui"] }
