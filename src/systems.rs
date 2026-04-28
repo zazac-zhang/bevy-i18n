@@ -105,6 +105,10 @@ pub fn hot_reload_system(
 
 /// Generic update system for any `Localizable` component paired with `I18nText`.
 ///
+/// The `I18nText` key must match one of the keys in `T::translations()`.
+/// Only the matching field is updated. For multi-field components, spawn
+/// separate entities with different `I18nText` keys.
+///
 /// Register with `app.add_systems(Update, update_localizable::<MyComponent>)`.
 pub fn update_localizable<T: Localizable + Component<Mutability = Mutable>>(
     i18n: Res<I18n>,
@@ -127,8 +131,11 @@ pub fn update_localizable<T: Localizable + Component<Mutability = Mutable>>(
             &vars,
             &locales,
         );
-        for (field_name, _key) in T::translations() {
-            component.set_field(field_name, &translation);
+        // Only update the field whose key matches the I18nText key
+        for (field_name, key) in T::translations() {
+            if *key == t.key {
+                component.set_field(field_name, &translation);
+            }
         }
         t.dirty = false;
     }

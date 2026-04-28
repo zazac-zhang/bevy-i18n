@@ -40,3 +40,8 @@ path = "examples/locale_switch.rs"
 [[example]]
 name = "advanced_features"
 path = "examples/advanced_features.rs"
+
+[[example]]
+name = "custom_component"
+path = "examples/custom_component.rs"
+required-features = ["derive"]
