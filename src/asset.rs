@@ -160,10 +160,10 @@ fn parse_po(content: &str) -> HashMap<String, String> {
                 let plural_key = format!("{current_msgid}.{idx}");
                 entries.insert(plural_key, val);
             }
-        } else if line.starts_with("msgstr") && !in_plural {
-            if let Some(val) = extract_po_string(line) {
-                entries.insert(current_msgid.clone(), val);
-            }
+        } else if line.starts_with("msgstr") && !in_plural
+            && let Some(val) = extract_po_string(line)
+        {
+            entries.insert(current_msgid.clone(), val);
         }
     }
 
