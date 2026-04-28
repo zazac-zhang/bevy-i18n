@@ -41,13 +41,13 @@ fn setup(
     // Title
     commands.spawn((
         Text::new(""),
-        T::new("game.title"),
+        I18nText::new("game.title"),
     ));
 
     // Subtitle with namespace builder
     commands.spawn((
         Text::new(""),
-        T::ns("game").key("subtitle"),
+        I18nText::ns("game").key("subtitle"),
     ));
 
     // Current language indicator

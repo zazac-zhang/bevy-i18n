@@ -74,36 +74,36 @@ fn setup(
     // ── Spawn text with different T constructors ──────────────────
 
     // Simple key lookup
-    commands.spawn((Text::new(""), T::new("game.title")));
+    commands.spawn((Text::new(""), I18nText::new("game.title")));
 
     // Static variable substitutions
-    commands.spawn((Text::new(""), T::with_vars("player.greeting", &[("name", "Adventurer")])));
+    commands.spawn((Text::new(""), I18nText::with_vars("player.greeting", &[("name", "Adventurer")])));
 
     // Plural forms (count can be changed at runtime)
-    commands.spawn((Text::new(""), T::plural("player.inventory", 5), PluralLabel));
+    commands.spawn((Text::new(""), I18nText::plural("player.inventory", 5), PluralLabel));
 
     // Context disambiguation — same key, different meanings
-    commands.spawn((Text::new(""), T::with_context("open", "menu")));
-    commands.spawn((Text::new(""), T::with_context("open", "dialog")));
+    commands.spawn((Text::new(""), I18nText::with_context("open", "menu")));
+    commands.spawn((Text::new(""), I18nText::with_context("open", "dialog")));
 
     // Namespace builder — convenient for large projects
-    commands.spawn((Text::new(""), T::ns("menu").key("new_game")));
-    commands.spawn((Text::new(""), T::ns("menu").key("quit")));
+    commands.spawn((Text::new(""), I18nText::ns("menu").key("new_game")));
+    commands.spawn((Text::new(""), I18nText::ns("menu").key("quit")));
 
     // Dynamic variable — references a TVar entity that updates at runtime
     commands.spawn((
         Text::new(""),
-        T::new("player.score").with_dynamic_var("score", score_entity),
+        I18nText::new("player.score").with_dynamic_var("score", score_entity),
     ));
 
     // Currency formatting via {amount::currency} specifier
     commands.spawn((
         Text::new(""),
-        T::ns("shop").with_vars("price", &[("amount", "1234.50")]),
+        I18nText::ns("shop").with_vars("price", &[("amount", "1234.50")]),
     ));
 
     // Missing key — falls back to the key string itself (with debug warning)
-    commands.spawn((Text::new(""), T::new("this.key.does.not.exist")));
+    commands.spawn((Text::new(""), I18nText::new("this.key.does.not.exist")));
 
     // Store state
     commands.insert_resource(AppState {
@@ -125,20 +125,20 @@ fn handle_input(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut state: ResMut<AppState>,
     mut i18n: ResMut<I18n>,
-    mut plural_query: Query<&mut T, With<PluralLabel>>,
+    mut plural_query: Query<&mut I18nText, With<PluralLabel>>,
     mut score_query: Query<&mut TVar>,
 ) {
     // Change item count → triggers plural re-selection
     if keyboard.just_pressed(KeyCode::ArrowUp) {
         state.item_count += 1;
         for mut t in &mut plural_query {
-            *t = T::plural("player.inventory", state.item_count);
+            *t = I18nText::plural("player.inventory", state.item_count);
         }
     }
     if keyboard.just_pressed(KeyCode::ArrowDown) {
         state.item_count = state.item_count.saturating_sub(1);
         for mut t in &mut plural_query {
-            *t = T::plural("player.inventory", state.item_count);
+            *t = I18nText::plural("player.inventory", state.item_count);
         }
     }
 

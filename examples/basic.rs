@@ -28,21 +28,21 @@ fn setup(
     // Set the active locale
     i18n.set_locale("en");
 
-    // Spawn translated text — the `T` component resolves the key automatically
+    // Spawn translated text — the `I18nText` component resolves the key automatically
     commands.spawn((
         Text::new(""),
-        T::new("game.title"),
+        I18nText::new("game.title"),
     ));
 
     // With variable substitutions
     commands.spawn((
         Text::new(""),
-        T::with_vars("player.greeting", &[("name", "Player")]),
+        I18nText::with_vars("player.greeting", &[("name", "Player")]),
     ));
 
     // Plural forms based on count
     commands.spawn((
         Text::new(""),
-        T::plural("player.inventory", 0),
+        I18nText::plural("player.inventory", 0),
     ));
 }

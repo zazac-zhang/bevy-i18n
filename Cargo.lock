@@ -486,10 +486,20 @@ name = "bevy_i18n"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "bevy_i18n_derive",
  "divan",
  "regex",
  "serde",
  "serde_yaml",
+]
+
+[[package]]
+name = "bevy_i18n_derive"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
