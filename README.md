@@ -12,7 +12,7 @@ A lightweight internationalization plugin for Bevy 0.18.
 - **Per-locale fonts** — set different fonts for different locales
 - **Number/currency formatting** — `{amount::currency}`, `{price::number}`
 - **Context disambiguation** — same word, different translations (`msgctxt`)
-- **Namespacing** — `I18nText::ns("ui.menu").key("quit")` builder pattern
+- **Namespacing** — `I18nMarker::ns("ui.menu").key("quit")` builder pattern
 - **Dynamic variables** — `TVar` component for runtime-updating values
 - **Missing key warnings** — debug-mode alerts for untranslated keys
 - **CLI tools** — extract keys from source, validate locale consistency
@@ -75,18 +75,18 @@ fn setup(
     i18n.set_fallback_locale("en");
 
     // Simple text
-    commands.spawn((Text::new(""), I18nText::new("game.title")));
+    commands.spawn((Text::new(""), I18nMarker::new("game.title")));
 
     // With variables
     commands.spawn((
         Text::new(""),
-        I18nText::with_vars("greeting", &[("name", "Player")]),
+        I18nMarker::with_vars("greeting", &[("name", "Player")]),
     ));
 
     // Plural forms
     commands.spawn((
         Text::new(""),
-        I18nText::plural("player.inventory", 5),
+        I18nMarker::plural("player.inventory", 5),
     ));
 }
 ```
@@ -96,22 +96,23 @@ fn setup(
 ```rust
 fn switch_to_chinese(mut i18n: ResMut<I18n>) {
     i18n.set_locale("zh");
-    // All I18nText components automatically update
+    // All I18nMarker components automatically update
 }
 ```
 
 ## API Reference
 
-### I18nText Component
+### I18nMarker Component
 
 | Constructor | Description |
 |-------------|-------------|
-| `I18nText::new(key)` | Simple key lookup |
-| `I18nText::with_vars(key, &[("var", "value")])` | Key with variable substitutions |
-| `I18nText::plural(key, count)` | Key with plural form selection |
-| `I18nText::with_context(key, context)` | Key with context disambiguation |
-| `I18nText::ns("namespace").key(subkey)` | Namespaced lookup (`namespace.subkey`) |
-| `I18nText::ns("ns").with_vars(key, vars)` | Namespace with variables |
+| `I18nMarker::new(key)` | Simple key lookup |
+| `I18nMarker::marker()` | Empty marker — all `Localizable` fields translated |
+| `I18nMarker::with_vars(key, &[("var", "value")])` | Key with variable substitutions |
+| `I18nMarker::plural(key, count)` | Key with plural form selection |
+| `I18nMarker::with_context(key, context)` | Key with context disambiguation |
+| `I18nMarker::ns("namespace").key(subkey)` | Namespaced lookup (`namespace.subkey`) |
+| `I18nMarker::ns("ns").with_vars(key, vars)` | Namespace with variables |
 
 ### Dynamic Variables (TVar)
 
@@ -124,7 +125,7 @@ let score_entity = commands.spawn(TVar::new("0")).id();
 // Reference it from a text entity
 commands.spawn((
     Text::new(""),
-    I18nText::new("player.score").with_dynamic_var("score", score_entity),
+    I18nMarker::new("player.score").with_dynamic_var("score", score_entity),
 ));
 
 // Update the TVar value — text auto-updates
@@ -179,12 +180,22 @@ Then register the generic update system:
 app.add_systems(Update, update_localizable::<CustomText>);
 ```
 
-And spawn with `I18nText`:
+And spawn with `I18nMarker`:
 
 ```rust
+// Single-field component
 commands.spawn((
     CustomText::default(),
-    I18nText::new("custom.message"),
+    I18nMarker::new("custom.message"),
+));
+
+// Multi-field component — all fields translated via translations()
+commands.spawn((
+    I18nMarker::marker(),
+    DialogBox {
+        title: String::new(),
+        body: String::new(),
+    },
 ));
 ```
 
@@ -216,15 +227,18 @@ struct HUD {
 
 ## How It Works
 
-`I18nText::new()` does **not** translate — it creates a marker component with `dirty: true`.
-The `update_text_system` system runs every frame, finds all entities with both `I18nText` and `Text`,
-translates the dirty ones, and clears the flag. Language changes set all components dirty again,
+`I18nMarker::new()` does **not** translate — it creates a marker component with `dirty: true`.
+The `update_localizable::<Text>` system runs every frame, finds all entities with both `I18nMarker` and `Text`,
+translates the dirty ones, and clears the flag. Language changes set all markers dirty again,
 triggering automatic re-translation.
 
+For custom `Localizable` components, register `update_localizable::<YourComponent>` and spawn
+with `I18nMarker::marker()` — all fields from `YourComponent::translations()` are translated automatically.
+
 ```
-commands.spawn((Text::new(""), I18nText::new("key")))
-    → Entity { Text(""), I18nText { dirty: true } }
-    → update_text_system finds (I18nText, Text) pair
+commands.spawn((Text::new(""), I18nMarker::new("key")))
+    → Entity { Text(""), I18nMarker { dirty: true } }
+    → update_localizable::<Text> finds (I18nMarker, Text) pair
     → translates and sets Text content, dirty = false
     → on locale change, all dirty = true → re-translate
 ```
@@ -251,7 +265,7 @@ cargo run --bin i18n-validate -- assets/locales
 src/
   lib.rs          - Module declarations and prelude
   asset.rs        - I18nAsset type and YAML/PO loaders
-  component.rs    - I18nText / TVar components, Localizable trait
+  component.rs    - I18nMarker / TVar components, Localizable trait
   interpolate.rs  - Variable interpolation and NumberFormat
   plugin.rs       - I18nPlugin registration
   resource.rs     - I18n resource (locale management)
@@ -271,6 +285,7 @@ derive/
 | `basic` | Minimal setup — load locales, spawn text | `cargo run --example basic` |
 | `locale_switch` | Press Space to toggle between languages | `cargo run --example locale_switch` |
 | `advanced_features` | All features: plural, context, TVar, formatting | `cargo run --example advanced_features` |
+| `custom_component` | `#[derive(I18n)]` for custom components | `cargo run --example custom_component --features derive` |
 
 ## License
 

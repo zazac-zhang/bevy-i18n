@@ -171,10 +171,10 @@ fn full_plural_pipeline(count: usize) {
     }
 }
 
-/// Benchmark: T component dirty-flag resolution pattern.
+/// Benchmark: I18nMarker component dirty-flag resolution pattern.
 #[divan::bench(args = [10, 100, 500])]
 fn dirty_flag_resolution(count: usize) {
-    let mut t_components: Vec<T> = (0..count).map(|i| I18nText::new(format!("key_{i}"))).collect();
+    let mut t_components: Vec<I18nMarker> = (0..count).map(|i| I18nMarker::new(format!("key_{i}"))).collect();
 
     // Simulate locale change: mark all dirty
     for i in 0..count {
@@ -186,7 +186,7 @@ fn dirty_flag_resolution(count: usize) {
     for i in 0..count {
         let t = &mut t_components[i];
         if t.dirty {
-            let _ = i18n.get_plural(&t.key, t.context.as_deref(), t.count, &[], &assets);
+            let _ = i18n.get_plural(t.key.as_deref().unwrap_or(""), t.context.as_deref(), t.count, &[], &assets);
             t.dirty = false;
         }
     }
@@ -196,8 +196,8 @@ fn dirty_flag_resolution(count: usize) {
 #[divan::bench(args = [10, 100])]
 fn tvar_change_detection(count: usize) {
     let tvar_values: Vec<TVar> = (0..count).map(|i| TVar::new(format!("{i}"))).collect();
-    let mut t_components: Vec<(T, usize)> = (0..count)
-        .map(|i| (I18nText::new("player.score").with_dynamic_var("score", Entity::from_raw_u32(0).unwrap()), i % count))
+    let mut t_components: Vec<(I18nMarker, usize)> = (0..count)
+        .map(|i| (I18nMarker::new("player.score").with_dynamic_var("score", Entity::from_raw_u32(0).unwrap()), i % count))
         .collect();
 
     // Check for changes (simulating tvar lookup)

@@ -56,9 +56,10 @@ fn setup(
 
     commands.spawn(Camera2d);
 
-    // Spawn custom dialog box — I18nText drives the translation
+    // Spawn custom dialog box — I18nMarker::marker() triggers translation
+    // of all fields defined in DialogBox::translations()
     commands.spawn((
-        I18nText::new("dialog.title"),
+        I18nMarker::marker(),
         DialogBox {
             title: String::new(),
             body: String::new(),
@@ -66,9 +67,9 @@ fn setup(
         },
     ));
 
-    // Spawn custom HUD
+    // Spawn custom HUD — same pattern: empty marker, all fields translated
     commands.spawn((
-        I18nText::new("hud.score"),
+        I18nMarker::marker(),
         HUD {
             score: String::new(),
             level: String::new(),

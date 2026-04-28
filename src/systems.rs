@@ -3,35 +3,34 @@ use bevy::ecs::component::Mutable;
 use bevy::ecs::message::MessageReader;
 use bevy::prelude::*;
 use bevy::text::TextFont;
-use bevy::ui::prelude::Text;
 
 use crate::asset::I18nAsset;
-use crate::component::{I18nText, Localizable, TVar};
+use crate::component::{I18nMarker, Localizable, TVar};
 use crate::resource::I18n;
 
-/// Resolves translation keys for all I18nText components.
+/// Marks all I18nMarker components dirty on locale change.
 pub fn resolve_translations(
     mut i18n: ResMut<I18n>,
-    mut query: Query<&mut I18nText>,
+    mut query: Query<&mut I18nMarker>,
 ) {
     let locale_changed = i18n.update_from();
     if locale_changed {
-        for mut t in &mut query {
-            t.mark_dirty();
+        for mut m in &mut query {
+            m.mark_dirty();
         }
     }
 }
 
-/// Checks dynamic variable references on I18nText components.
+/// Checks dynamic variable references on I18nMarker components.
 pub fn resolve_dynamic_vars(
-    mut query: Query<&mut I18nText>,
+    mut query: Query<&mut I18nMarker>,
     tvar_query: Query<&TVar>,
 ) {
-    for mut t in &mut query {
-        if t.dynamic_vars.is_empty() {
+    for mut m in &mut query {
+        if m.dynamic_vars.is_empty() {
             continue;
         }
-        let current_values: Vec<(String, String)> = t
+        let current_values: Vec<(String, String)> = m
             .dynamic_vars
             .iter()
             .filter_map(|(name, entity)| {
@@ -41,54 +40,89 @@ pub fn resolve_dynamic_vars(
         if current_values.is_empty() {
             continue;
         }
-        let last_values = t
+        let last_values = m
             .vars
             .iter()
-            .filter(|(k, _)| t.dynamic_vars.iter().any(|(dn, _)| dn == k))
+            .filter(|(k, _)| m.dynamic_vars.iter().any(|(dn, _)| dn == k))
             .cloned()
             .collect::<Vec<_>>();
         if current_values != last_values {
-            t.mark_dirty();
+            m.mark_dirty();
         }
     }
 }
 
-/// Updates Text content for dirty I18nText components.
-pub fn update_text_system(
+/// Generic translation update for any `Localizable` component.
+///
+/// If `I18nMarker.key` is set, only the matching field is translated (Text / single-field path).
+/// If `I18nMarker.key` is `None`, all `T::translations()` fields are translated (multi-field path).
+///
+/// Register with `app.add_systems(Update, update_localizable::<MyComponent>)`.
+pub fn update_localizable<T: Localizable + Component<Mutability = Mutable>>(
     i18n: Res<I18n>,
     locales: Res<Assets<I18nAsset>>,
-    mut query: Query<(&mut I18nText, &mut Text)>,
+    mut query: Query<(&mut I18nMarker, &mut T)>,
     tvar_query: Query<&TVar>,
-    mut text_fonts: Query<&mut TextFont, With<I18nText>>,
+) {
+    for (mut m, mut component) in query.iter_mut() {
+        if !m.dirty {
+            continue;
+        }
+
+        // Collect vars from marker + dynamic
+        let mut all_vars: Vec<(String, String)> = m.vars.clone();
+        for (name, entity) in &m.dynamic_vars {
+            if let Ok(tvar) = tvar_query.get(*entity) {
+                all_vars.push((name.clone(), tvar.value.clone()));
+            }
+        }
+        let vars: Vec<(&str, &str)> =
+            all_vars.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
+
+        if let Some(ref key) = m.key {
+            // Key-based: translate this specific key
+            let translated = i18n.get_plural(key, m.context.as_deref(), m.count, &vars, &locales);
+            let translations = T::translations();
+            if translations.len() == 1 && translations[0].1 == "_text_" {
+                // Single-field text: always update (key matches the Text component, not a field)
+                component.set_field(translations[0].0, &translated);
+            } else {
+                // Multi-field component: match key to find the right field
+                for (field_name, field_key) in translations {
+                    if field_key == key {
+                        component.set_field(field_name, &translated);
+                    }
+                }
+            }
+        } else {
+            // Marker-only: translate all fields via translations()
+            for (field_name, field_key) in T::translations() {
+                let translated = i18n.get_plural(field_key, None, None, &vars, &locales);
+                component.set_field(field_name, &translated);
+            }
+        }
+
+        m.dirty = false;
+    }
+}
+
+/// Updates font handles for entities with I18nMarker + TextFont.
+pub fn update_fonts(
+    i18n: Res<I18n>,
+    mut text_fonts: Query<&mut TextFont, With<I18nMarker>>,
 ) {
     if let Some(font_handle) = i18n.current_locale_font() {
         for mut text_font in &mut text_fonts {
             text_font.font = font_handle.clone();
         }
     }
-    for (mut t, mut text) in &mut query {
-        if !t.dirty {
-            continue;
-        }
-        let mut all_vars: Vec<(String, String)> = t.vars.clone();
-        for (name, entity) in &t.dynamic_vars {
-            if let Ok(tvar) = tvar_query.get(*entity) {
-                all_vars.push((name.clone(), tvar.value.clone()));
-            }
-        }
-        let vars: Vec<(&str, &str)> =
-            all_vars.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect::<Vec<_>>();
-        let translated = i18n.get_plural(&t.key, t.context.as_deref(), t.count, &vars, &locales);
-        text.0 = translated;
-        t.dirty = false;
-    }
 }
 
-/// Listens for I18nAsset changes and marks all I18nText components dirty on reload.
+/// Listens for I18nAsset changes and marks all I18nMarker components dirty on reload.
 pub fn hot_reload_system(
     mut events: MessageReader<AssetEvent<I18nAsset>>,
     mut i18n: ResMut<I18n>,
-    mut query: Query<&mut I18nText>,
+    mut query: Query<&mut I18nMarker>,
 ) {
     for event in events.read() {
         if matches!(
@@ -96,48 +130,9 @@ pub fn hot_reload_system(
             AssetEvent::LoadedWithDependencies { .. } | AssetEvent::Modified { .. }
         ) {
             i18n.clear_translation_cache();
-            for mut t in &mut query {
-                t.mark_dirty();
+            for mut m in &mut query {
+                m.mark_dirty();
             }
         }
     }
 }
-
-/// Generic update system for any `Localizable` component paired with `I18nText`.
-///
-/// The `I18nText` key must match one of the keys in `T::translations()`.
-/// Only the matching field is updated. For multi-field components, spawn
-/// separate entities with different `I18nText` keys.
-///
-/// Register with `app.add_systems(Update, update_localizable::<MyComponent>)`.
-pub fn update_localizable<T: Localizable + Component<Mutability = Mutable>>(
-    i18n: Res<I18n>,
-    locales: Res<Assets<I18nAsset>>,
-    mut query: Query<(&mut I18nText, &mut T)>,
-) {
-    for (mut t, mut component) in query.iter_mut() {
-        if !t.dirty {
-            continue;
-        }
-        let vars: Vec<(&str, &str)> = t
-            .vars
-            .iter()
-            .map(|(k, v)| (k.as_str(), v.as_str()))
-            .collect();
-        let translation = i18n.get_plural(
-            &t.key,
-            t.context.as_deref(),
-            t.count,
-            &vars,
-            &locales,
-        );
-        // Only update the field whose key matches the I18nText key
-        for (field_name, key) in T::translations() {
-            if *key == t.key {
-                component.set_field(field_name, &translation);
-            }
-        }
-        t.dirty = false;
-    }
-}
-

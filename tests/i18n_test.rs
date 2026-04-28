@@ -99,7 +99,7 @@ fn test_t_component_updates_text() {
     // Spawn a text entity with T component
     let entity = app
         .world_mut()
-        .spawn((Text::new(""), I18nText::new("game.title")))
+        .spawn((Text::new(""), I18nMarker::new("game.title")))
         .id();
 
     // Let assets load and systems run
@@ -137,7 +137,7 @@ fn test_fallback_locale_in_systems() {
     assert_eq!(result, "Star Trek");
 }
 
-// ── Plural translation via I18nText::plural ──────────────────────────────────
+// ── Plural translation via I18nMarker::plural ──────────────────────────────────
 
 #[test]
 fn test_plural_t_component() {
@@ -153,7 +153,7 @@ fn test_plural_t_component() {
     // Spawn a text with plural T component
     let entity = app
         .world_mut()
-        .spawn((Text::new(""), I18nText::plural("items.count", 5)))
+        .spawn((Text::new(""), I18nMarker::plural("items.count", 5)))
         .id();
 
     pump_app(&mut app, 20);
@@ -175,7 +175,7 @@ fn test_plural_zero() {
 
     let entity = app
         .world_mut()
-        .spawn((Text::new(""), I18nText::plural("items.count", 0)))
+        .spawn((Text::new(""), I18nMarker::plural("items.count", 0)))
         .id();
 
     pump_app(&mut app, 20);
@@ -204,7 +204,7 @@ fn test_tvar_updates_text() {
     // Spawn a text that references the TVar
     let entity = app
         .world_mut()
-        .spawn((Text::new(""), I18nText::new("player.score").with_dynamic_var("score", tvar_entity)))
+        .spawn((Text::new(""), I18nMarker::new("player.score").with_dynamic_var("score", tvar_entity)))
         .id();
 
     pump_app(&mut app, 20);
@@ -238,7 +238,7 @@ fn test_context_translation_t_component() {
 
     let entity = app
         .world_mut()
-        .spawn((Text::new(""), I18nText::with_context("open", "menu")))
+        .spawn((Text::new(""), I18nMarker::with_context("open", "menu")))
         .id();
 
     pump_app(&mut app, 20);
@@ -264,7 +264,7 @@ fn test_locale_change_refreshes_text() {
 
     let entity = app
         .world_mut()
-        .spawn((Text::new(""), I18nText::new("game.title")))
+        .spawn((Text::new(""), I18nMarker::new("game.title")))
         .id();
 
     pump_app(&mut app, 20);
