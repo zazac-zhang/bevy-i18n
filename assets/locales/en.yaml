@@ -19,6 +19,8 @@ menu:
   open: "Open"
 
 dialog:
+  title: "Dialog Box"
+  body: "This is a translated dialog."
   open: "Open Dialog Box"
 
 locale:

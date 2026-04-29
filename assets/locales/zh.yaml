@@ -19,6 +19,8 @@ menu:
   open: "打开"
 
 dialog:
+  title: "对话框"
+  body: "这是一个翻译后的对话框。"
   open: "打开对话框"
 
 locale:
