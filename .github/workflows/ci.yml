@@ -1,0 +1,112 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust:
+          - stable
+          - beta
+          - nightly
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust }}
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+
+      - name: Run tests
+        run: cargo test --verbose --all-features
+
+      - name: Run binary tests
+        run: cargo test --verbose --bins
+
+      - name: Test i18n-extract
+        run: |
+          cargo build --release --bin i18n-extract
+          ./target/release/i18n-extract src locales/test_template.yaml
+
+      - name: Test i18n-validate
+        run: |
+          cargo build --release --bin i18n-validate
+          # Will be tested with actual locale files in i18n workflow
+
+  fmt:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Run clippy
+        run: cargo clippy --all-features -- -D warnings
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build all features
+        run: cargo build --verbose --all-features
+
+      - name: Build no default features
+        run: cargo build --verbose --no-default-features
+
+      - name: Build derive feature
+        run: cargo build --verbose --features derive
+
+  docs:
+    name: Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build documentation
+        run: cargo doc --no-deps --all-features
+
+      - name: Check doc links
+        run: cargo doc --no-deps --all-features --document-private-items

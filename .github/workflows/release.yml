@@ -1,0 +1,162 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          echo "## What's Changed" > release-notes.md
+          echo "" >> release-notes.md
+          git log --pretty=format:"- %s" $(git describe --tags --abbrev=0 HEAD^)..HEAD >> release-notes.md
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: release-notes.md
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-crate:
+    name: Publish to crates.io
+    runs-on: ubuntu-latest
+    needs: create-release
+    strategy:
+      matrix:
+        crate:
+          - name: bevy_i18n
+            path: .
+          - name: bevy_i18n_derive
+            path: derive
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Verify tag version matches Cargo.toml
+        run: |
+          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          echo "Tag version: $TAG_VERSION"
+
+          CARGO_VERSION=$(cargo metadata --format-version 1 --no-deps | jq -r ".packages[] | select(.name == \"${{ matrix.crate.name }}\") | .version")
+          echo "Cargo version: $CARGO_VERSION"
+
+          if [ "$TAG_VERSION" != "$CARGO_VERSION" ]; then
+            echo "Error: Tag version ($TAG_VERSION) does not match Cargo.toml version ($CARGO_VERSION)"
+            exit 1
+          fi
+
+      - name: Publish ${{ matrix.crate.name }}
+        run: |
+          cd "${{ matrix.crate.path }}"
+          cargo publish --no-verify
+
+  build-binaries:
+    name: Build Release Binaries
+    runs-on: ${{ matrix.os }}
+    needs: create-release
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: i18n-extract
+            asset_name: i18n-extract-linux-x86_64
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: i18n-validate
+            asset_name: i18n-validate-linux-x86_64
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact_name: i18n-extract
+            asset_name: i18n-extract-macos-x86_64
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact_name: i18n-validate
+            asset_name: i18n-validate-macos-x86_64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: i18n-extract
+            asset_name: i18n-extract-macos-aarch64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: i18n-validate
+            asset_name: i18n-validate-macos-aarch64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact_name: i18n-extract.exe
+            asset_name: i18n-extract-windows-x86_64.exe
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact_name: i18n-validate.exe
+            asset_name: i18n-validate-windows-x86_64.exe
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build binary
+        run: |
+          cargo build --release --bin ${{ matrix.artifact_name }} --target ${{ matrix.target }}
+
+      - name: Strip binary (Linux/macOS)
+        if: matrix.os != 'windows-latest'
+        run: |
+          strip target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+
+      - name: Upload binary to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-docs:
+    name: Publish Documentation
+    runs-on: ubuntu-latest
+    needs: publish-crate
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Build documentation
+        run: |
+          cargo doc --no-deps --all-features
+          echo "<meta http-equiv=\"refresh\" content=\"0; url=bevy_i18n\">" > target/doc/index.html
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./target/doc
+          publish_branch: gh-pages

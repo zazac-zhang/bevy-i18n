@@ -1,30 +1,16 @@
-# assets/locales/en.yaml
-game:
-  title: "Star Trek"
-  subtitle: "Explore the Unknown"
+# English locale file
+# Auto-extracted from source code
 
-player:
-  greeting: "Hello, {name}!"
-  score: "Score: {score}"
-  balance: "Balance: {amount::currency}"
-  inventory:
-    zero: "Empty inventory"
-    one: "{count} item"
-    other: "{count} items"
-
-menu:
-  new_game: "New Game"
-  settings: "Settings"
-  quit: "Quit"
-  open: "Open"
-
-dialog:
-  title: "Dialog Box"
-  body: "This is a translated dialog."
-  open: "Open Dialog Box"
-
-locale:
-  display: "Language: {locale}"
-
-shop:
-  price: "Price: {amount::currency}"
+commented.out.key: "This is a commented key"
+context::key: "Key with context"
+game.title: "Bevy I18n Demo"
+greeting: "{name}, {score}"
+items.count: "Item count"
+key: "{var1}, {var2}"
+menu::open: "Open Menu"
+namespace.key: "Namespaced key"
+player.greeting: "Welcome, {name}!"
+player.inventory: "Inventory"
+real.key: "Real key"
+settings.audio.volume: "Volume"
+ui.menu.quit: "Quit"

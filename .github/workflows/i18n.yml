@@ -1,0 +1,149 @@
+name: I18n Validation
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - 'assets/locales/**'
+      - 'src/**'
+      - 'examples/**'
+      - '.github/workflows/i18n.yml'
+  pull_request:
+    branches: [master, main]
+    paths:
+      - 'assets/locales/**'
+      - 'src/**'
+      - 'examples/**'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  extract-and-validate:
+    name: Extract & Validate Translations
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build i18n tools
+        run: |
+          cargo build --release --bin i18n-extract --bin i18n-validate
+
+      - name: Extract translation keys from source
+        run: |
+          ./target/release/i18n-extract src locales/template.yaml
+        continue-on-error: false
+
+      - name: Check for missing translation keys
+        run: |
+          if [ -d "assets/locales" ]; then
+            ./target/release/i18n-validate -t locales/template.yaml assets/locales
+          else
+            echo "No assets/locales directory found, skipping validation"
+            echo "Create assets/locales with your translation files to enable validation"
+          fi
+
+      - name: Upload template as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: i18n-template
+          path: locales/template.yaml
+          retention-days: 30
+
+      - name: Comment on PR with validation results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let comment = '## 🌍 I18n Validation Results\n\n';
+
+            try {
+              const template = fs.readFileSync('locales/template.yaml', 'utf8');
+              const keyCount = (template.match(/^[\w\-.]+:/gm) || []).length;
+              comment += `✅ Template generated with **${keyCount}** translation keys\n\n`;
+
+              if (fs.existsSync('assets/locales')) {
+                comment += '✅ All locale files validated successfully\n\n';
+                comment += '### Next Steps\n\n';
+                comment += '1. Review the uploaded template artifact\n';
+                comment += '2. Ensure all locales have translations for each key\n';
+                comment += '3. Check that variable placeholders match across locales\n';
+              } else {
+                comment += '⚠️ No `assets/locales` directory found\n\n';
+                comment += '### Getting Started\n\n';
+                comment += '1. Create `assets/locales/` directory\n';
+                comment += '2. Copy `locales/template.yaml` to `assets/locales/en.yaml`\n';
+                comment += '3. Add translations for each locale (e.g., `zh.yaml`, `ja.yaml`)\n';
+              }
+            } catch (error) {
+              comment += `❌ Error: ${error.message}\n`;
+            }
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  locale-consistency:
+    name: Check Locale Consistency
+    runs-on: ubuntu-latest
+    if: hashFiles('assets/locales/*.yaml') != '' || hashFiles('assets/locales/*.yml') != ''
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build i18n-validate
+        run: cargo build --release --bin i18n-validate
+
+      - name: Validate all locale files
+        run: |
+          ./target/release/i18n-validate assets/locales
+        continue-on-error: true
+
+      - name: Check for common issues
+        run: |
+          echo "Checking for common i18n issues..."
+
+          # Check for empty translations
+          find assets/locales -name "*.yaml" -o -name "*.yml" | while read file; do
+            echo "Checking $file..."
+            if grep -P '^\s+\w+:\s*""\s*$' "$file"; then
+              echo "⚠️ Warning: Empty translation found in $file"
+            fi
+          done
+
+      - name: Generate coverage report
+        if: always()
+        run: |
+          if [ -d "assets/locales" ]; then
+            echo "## Locale Coverage Report" > coverage.md
+            echo "" >> coverage.md
+
+            for file in assets/locales/*.yaml assets/locales/*.yml; do
+              if [ -f "$file" ]; then
+                locale=$(basename "$file" .yaml | sed 's/\.yml$//')
+                count=$(grep -cP '^\s*\w+:' "$file" || echo "0")
+                echo "- **$locale**: $count keys" >> coverage.md
+              fi
+            done
+
+            cat coverage.md
+          fi
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: locale-coverage
+          path: coverage.md
+          retention-days: 30

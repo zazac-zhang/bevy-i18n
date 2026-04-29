@@ -1,30 +1,16 @@
-# assets/locales/zh.yaml
-game:
-  title: "星际迷航"
-  subtitle: "探索未知"
+# 中文翻译文件
+# Auto-extracted from source code
 
-player:
-  greeting: "你好，{name}！"
-  score: "得分：{score}"
-  balance: "余额：{amount::currency}"
-  inventory:
-    zero: "背包空空如也"
-    one: "{count} 个物品"
-    other: "{count} 个物品"
-
-menu:
-  new_game: "新游戏"
-  settings: "设置"
-  quit: "退出"
-  open: "打开"
-
-dialog:
-  title: "对话框"
-  body: "这是一个翻译后的对话框。"
-  open: "打开对话框"
-
-locale:
-  display: "语言：{locale}"
-
-shop:
-  price: "价格：{amount::currency}"
+commented.out.key: "这是一个注释的键"
+context::key: "带上下文的键"
+game.title: "Bevy I18n 演示"
+greeting: "{name}，{score}"
+items.count: "物品数量"
+key: "{var1}，{var2}"
+menu::open: "打开菜单"
+namespace.key: "命名空间键"
+player.greeting: "欢迎，{name}！"
+player.inventory: "物品栏"
+real.key: "真实键"
+settings.audio.volume: "音量"
+ui.menu.quit: "退出"

@@ -1,2 +1,23 @@
 /target
 .worktrees/
+
+# i18n generated files (keep source, ignore generated)
+locales/*.template.yaml
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Debug
+*.log
+
+# Coverage
+tarpaulin-report.html
+cobertura.xml
